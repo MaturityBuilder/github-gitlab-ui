@@ -145,11 +145,29 @@
     return svg;
   }
 
+  function readCounter(doc, id, fallback) {
+    const node = doc.getElementById(id) || doc.querySelector(fallback);
+    if (!node) return null;
+    const text = node.textContent.replace(/\s+/g, " ").trim();
+    const title = (node.getAttribute("title") || "").trim();
+    if (!text || /not available/i.test(text) || /not available/i.test(title)) return null;
+    return { text: text, title: title || text };
+  }
+
+  function navCounts(doc) {
+    return {
+      issues: readCounter(doc, "issues-repo-tab-count", "#issues-tab .Counter"),
+      pulls: readCounter(doc, "pull-requests-repo-tab-count", "#pull-requests-tab .Counter"),
+    };
+  }
+
   function ensureSidebar(doc, repo) {
     const path = GL.pagePath(doc);
     let sidebar = doc.getElementById("gl-sidebar");
     const wiki = repo && hasWiki(doc, repo) ? "1" : "0";
-    const key = repo ? repo.owner + "/" + repo.repo + "/" + wiki : "";
+    const counts = navCounts(doc);
+    const countKey = (counts.issues ? counts.issues.text : "-") + "/" + (counts.pulls ? counts.pulls.text : "-");
+    const key = repo ? repo.owner + "/" + repo.repo + "/" + wiki + "/" + countKey : "";
     if (!sidebar) {
       sidebar = doc.createElement("aside");
       sidebar.id = "gl-sidebar";
@@ -222,7 +240,19 @@
       const link = doc.createElement("a");
       link.dataset.section = id;
       link.href = "/" + repo.owner + "/" + repo.repo + suffix;
-      link.textContent = label;
+      const name = doc.createElement("span");
+      name.className = "gl-nav-label";
+      name.textContent = label;
+      link.appendChild(name);
+      const count = counts[id];
+      if (count) {
+        const badge = doc.createElement("span");
+        badge.className = "gl-count";
+        badge.textContent = count.text;
+        badge.title = count.title;
+        link.appendChild(badge);
+        link.setAttribute("aria-label", label + ", " + count.title);
+      }
       nav.appendChild(link);
     });
     context.append(project, nav);
@@ -311,6 +341,7 @@
         restoreLabels(doc);
         if (GL.clearPipeline) GL.clearPipeline(doc);
         if (GL.restoreCommentOrder) GL.restoreCommentOrder(doc);
+        if (GL.clearVulns) GL.clearVulns(doc);
         return;
       }
       html.classList.add("gl-look");
@@ -321,6 +352,7 @@
       remapLabels(doc);
       if (GL.applyPipeline) GL.applyPipeline(doc);
       if (GL.applyCommentOrder) GL.applyCommentOrder(doc, settings.commentOrder || "asc");
+      if (GL.applyVulns) GL.applyVulns(doc);
     } finally {
       rendering = false;
     }
@@ -374,6 +406,7 @@
   GL.render = render;
   GL.parseRepo = parseRepo;
   GL.saveCommentOrder = saveCommentOrder;
+  GL.requestRender = queue;
 
   const extension = globalThis.chrome && chrome.runtime && chrome.runtime.id;
   const autostart = document.documentElement.dataset.glAutostart === "true";

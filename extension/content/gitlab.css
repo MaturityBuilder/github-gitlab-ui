@@ -212,12 +212,36 @@ html.gl-look .gl-nav {
 }
 
 html.gl-look .gl-nav a {
-  display: block;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 6px 10px;
   border-radius: 6px;
   color: var(--gl-text);
   text-decoration: none;
   border-left: 3px solid transparent;
+}
+
+html.gl-look .gl-nav-label {
+  min-width: 0;
+}
+
+html.gl-look .gl-count {
+  margin-left: auto;
+  min-width: 1.25em;
+  padding: 0 6px;
+  border-radius: 10px;
+  background: var(--gl-subtle);
+  color: var(--gl-muted);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+  text-align: center;
+}
+
+html.gl-look .gl-nav a[aria-current="page"] .gl-count {
+  background: #dcdcde;
+  color: var(--gl-heading);
 }
 
 html.gl-look .gl-nav a:hover {
@@ -229,6 +253,76 @@ html.gl-look .gl-nav a[aria-current="page"] {
   border-left-color: var(--gl-blue);
   font-weight: 600;
   color: var(--gl-heading);
+}
+
+html.gl-look .gl-vuln-line[data-severity="critical"],
+html.gl-look .gl-vuln-line[data-severity="high"] {
+  background: #fff1ef;
+  box-shadow: inset 3px 0 0 var(--gl-failed);
+}
+
+html.gl-look .gl-vuln-line[data-severity="medium"],
+html.gl-look .gl-vuln-line[data-severity="unknown"] {
+  background: #fff6e5;
+  box-shadow: inset 3px 0 0 var(--gl-pending);
+}
+
+html.gl-look .gl-vuln-line[data-severity="low"] {
+  background: #eef4fb;
+  box-shadow: inset 3px 0 0 var(--gl-blue);
+}
+
+html.gl-look .gl-vuln {
+  border-radius: 2px;
+  padding: 0 1px;
+  text-decoration: none;
+  cursor: help;
+}
+
+html.gl-look .gl-vuln[data-severity="critical"],
+html.gl-look .gl-vuln[data-severity="high"] {
+  background: #ffd7d3;
+  color: #8d1300;
+}
+
+html.gl-look .gl-vuln[data-severity="medium"],
+html.gl-look .gl-vuln[data-severity="unknown"] {
+  background: #ffe4b3;
+  color: #6e4500;
+}
+
+html.gl-look .gl-vuln[data-severity="low"] {
+  background: #d7e6f8;
+  color: #0b4f8a;
+}
+
+html.gl-look .gl-vuln-note {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 0 6px;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 18px;
+  text-decoration: none;
+  vertical-align: baseline;
+}
+
+html.gl-look .gl-vuln-note[data-severity="critical"],
+html.gl-look .gl-vuln-note[data-severity="high"] {
+  background: #ffd7d3;
+  color: #8d1300;
+}
+
+html.gl-look .gl-vuln-note[data-severity="medium"],
+html.gl-look .gl-vuln-note[data-severity="unknown"] {
+  background: #ffe4b3;
+  color: #6e4500;
+}
+
+html.gl-look .gl-vuln-note[data-severity="low"] {
+  background: #d7e6f8;
+  color: #0b4f8a;
 }
 
 html.gl-look .gl-pipeline-row {

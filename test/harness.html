@@ -8,6 +8,7 @@
     <pre id="out"></pre>
     <script src="../extension/content/pipeline.js"></script>
     <script src="../extension/content/comments.js"></script>
+    <script src="../extension/content/vulns.js"></script>
     <script src="../extension/content/content.js"></script>
     <script>
       const failures = [];
@@ -32,14 +33,19 @@
       assert(staged[1].status === "failed", "test stage worst status");
       assert(staged[1].jobs.length === 2, "matrix jobs share a stage");
       assert(staged[2].status === "running", "deploy stage status");
+      assert(GitLabLook.versionInRange("4.17.20", "< 4.17.21"), "vulnerable version in range");
+      assert(!GitLabLook.versionInRange("4.17.21", "< 4.17.21"), "patched version outside range");
+      assert(GitLabLook.fileMatchesManifest("package.json", "package.json"), "manifest matches itself");
+      assert(GitLabLook.fileMatchesManifest("package-lock.json", "package.json"), "lockfile matches package manifest");
+      assert(!GitLabLook.fileMatchesManifest("README.md", "package.json"), "readme is not a manifest");
 
       document.body.dataset.glPath = "/acme/widgets";
       document.body.innerHTML = [
         '<header role="banner"><input name="q" /></header>',
         '<nav aria-label="Repository" class="js-repo-nav">',
         '<a id="code-tab" href="/acme/widgets"><span data-content="Code">Code</span></a>',
-        '<a id="issues-tab" href="/acme/widgets/issues">Issues</a>',
-        '<a id="pull-requests-tab" href="/acme/widgets/pulls"><span data-content="Pull requests">Pull requests</span></a>',
+        '<a id="issues-tab" href="/acme/widgets/issues"><span data-content="Issues">Issues</span><span id="issues-repo-tab-count" title="1,039" class="Counter">1k</span></a>',
+        '<a id="pull-requests-tab" href="/acme/widgets/pulls"><span data-content="Pull requests">Pull requests</span><span id="pull-requests-repo-tab-count" title="74" class="Counter">74</span></a>',
         '<a id="actions-tab" href="/acme/widgets/actions"><span data-content="Actions">Actions</span></a>',
         '<a id="wiki-tab" href="/acme/widgets/wiki">Wiki</a>',
         '<a id="insights-tab" href="/acme/widgets/pulse">Insights</a>',
@@ -51,9 +57,21 @@
       GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
       assert(document.documentElement.classList.contains("gl-look"), "skin class");
       assert(document.documentElement.classList.contains("gl-look-repo"), "repo class");
-      const labels = [...document.querySelectorAll("#gl-sidebar .gl-nav a")].map((node) => node.textContent);
+      function navLabels() {
+        return [...document.querySelectorAll("#gl-sidebar .gl-nav a")].map((node) => node.querySelector(".gl-nav-label").textContent);
+      }
+      const labels = navLabels();
       assert(labels.join("|") === "Repository|Issues|Merge requests|CI/CD|Wiki|Insights|Settings", "sidebar labels: " + labels.join("|"));
-      assert(document.querySelector("#gl-sidebar .gl-nav a[aria-current='page']").textContent === "Repository", "repo section active");
+      assert(document.querySelector("#gl-sidebar .gl-nav a[aria-current='page'] .gl-nav-label").textContent === "Repository", "repo section active");
+      assert(document.querySelector("#gl-sidebar a[data-section='issues'] .gl-count").textContent === "1k", "issue count");
+      assert(document.querySelector("#gl-sidebar a[data-section='issues'] .gl-count").title === "1,039", "issue count title");
+      assert(document.querySelector("#gl-sidebar a[data-section='pulls'] .gl-count").textContent === "74", "merge request count");
+      assert(document.querySelector("#gl-sidebar a[data-section='pulls']").getAttribute("aria-label") === "Merge requests, 74", "merge request count label");
+      assert(!document.querySelector("#gl-sidebar a[data-section='repo'] .gl-count"), "repository has no count");
+      document.getElementById("pull-requests-repo-tab-count").textContent = "75";
+      document.getElementById("pull-requests-repo-tab-count").title = "75";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.querySelector("#gl-sidebar a[data-section='pulls'] .gl-count").textContent === "75", "merge request count updates");
       assert(document.querySelector("h1").textContent === "Merge requests", "heading remap");
       assert(document.title.indexOf("Merge requests") === 0, "title remap: " + document.title);
 
@@ -66,7 +84,7 @@
       ].join("");
       document.body.dataset.glPath = "/acme/widgets";
       GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
-      const noWiki = [...document.querySelectorAll("#gl-sidebar .gl-nav a")].map((node) => node.textContent);
+      const noWiki = navLabels();
       assert(!noWiki.includes("Wiki"), "wiki omitted: " + noWiki.join("|"));
       assert(noWiki.includes("Settings"), "settings kept");
 
@@ -208,6 +226,62 @@
       GitLabLook.render(document, { enabled: true, commentOrder: "desc" });
       assert(!document.getElementById("gl-comment-order"), "control hidden on files tab");
       assert(replyIds() === "r2,r1", "files tab replies reversed");
+
+      document.body.dataset.glPath = "/acme/widgets/security/dependabot";
+      document.body.innerHTML = [
+        '<div class="Box-row">',
+        '<a href="/acme/widgets/security/dependabot/7">Prototype Pollution in lodash</a>',
+        "<span>high</span><span>package.json</span><span>GHSA-35jh-r3h4-6jhm</span><span>&lt; 4.17.21</span>",
+        "</div>",
+        '<div class="Box-row">',
+        '<a href="/acme/widgets/security/dependabot/8">Dismissed ReDoS in minimatch</a>',
+        "<span>medium</span><span>package-lock.json</span>",
+        "</div>",
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const parsed = GitLabLook.parseDependabotAlerts(document, GitLabLook.parseRepo("/acme/widgets/security/dependabot"));
+      assert(parsed.length === 2, "parsed dependabot alerts: " + parsed.length);
+      assert(parsed[0].package === "lodash" && parsed[0].severity === "high" && parsed[0].state === "open", "open lodash alert");
+      assert(parsed[1].state === "closed", "dismissed alert closed");
+
+      document.body.dataset.glFile = "package.json";
+      document.body.dataset.glPath = "/acme/widgets/blob/main/package.json";
+      document.body.innerHTML = [
+        '<div id="LC1" data-testid="code-cell">"lodash": "^4.17.20",</div>',
+        '<div id="LC2" data-testid="code-cell">"lodash": "4.17.21",</div>',
+        '<div id="LC3" data-testid="code-cell">"left-pad": "1.0.0",</div>',
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.querySelector("#LC1 .gl-vuln").textContent === "lodash", "vulnerable dependency highlighted");
+      assert(document.querySelector("#LC1").classList.contains("gl-vuln-line"), "vulnerable line marked");
+      assert(!document.querySelector("#LC2 .gl-vuln"), "patched lodash left alone");
+      assert(!document.querySelector("#LC3 .gl-vuln"), "unrelated dependency left alone");
+
+      document.body.dataset.glFile = "README.md";
+      document.body.innerHTML = '<div id="LC1" data-testid="code-cell">See lodash and GHSA-35jh-r3h4-6jhm</div>';
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const readmeMarks = [...document.querySelectorAll("#LC1 .gl-vuln")].map((node) => node.textContent);
+      assert(readmeMarks.join(",") === "GHSA-35jh-r3h4-6jhm", "only the advisory id is highlighted in prose: " + readmeMarks.join(","));
+
+      document.body.dataset.glFile = "";
+      document.body.dataset.glPath = "/acme/widgets/actions/runs/42/job/4";
+      document.body.innerHTML = [
+        "<check-step>",
+        '<div class="js-log-line">npm WARN lodash@4.17.20 is vulnerable</div>',
+        '<div class="js-log-line">installed lodash@4.17.21</div>',
+        '<div class="js-log-line">echo hello</div>',
+        "</check-step>",
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const logLines = [...document.querySelectorAll(".js-log-line")];
+      assert(logLines[0].querySelector(".gl-vuln").textContent === "lodash", "vulnerable log line highlighted");
+      assert(logLines[0].querySelector(".gl-vuln-note").textContent.indexOf("lodash") > -1, "log severity note");
+      assert(!logLines[1].querySelector(".gl-vuln"), "patched version in the log left alone");
+      assert(!logLines[2].querySelector(".gl-vuln"), "unrelated log line left alone");
+      GitLabLook.render(document, { enabled: false, commentOrder: "asc" });
+      assert(!document.querySelector(".gl-vuln"), "highlights removed when the skin is off");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.querySelector(".js-log-line .gl-vuln"), "highlights return with the skin");
 
       document.body.dataset.glPath = "/acme/widgets";
       document.title = "Pull requests · acme/widgets · GitHub";

@@ -1,9 +1,10 @@
 {
   "manifest_version": 3,
   "name": "GitLab Look for GitHub",
-  "version": "1.0.0",
-  "description": "Unofficial skin that renders GitHub with a GitLab-style layout, pipeline graph, and pull request comment order.",
+  "version": "1.1.0",
+  "description": "Unofficial skin that renders GitHub with a GitLab-style layout, pipeline graph, pull request comment order, and Dependabot highlights.",
   "permissions": ["storage"],
+  "host_permissions": ["https://github.com/*"],
   "action": {
     "default_title": "GitLab Look",
     "default_popup": "popup/popup.html",
@@ -26,7 +27,7 @@
     },
     {
       "matches": ["https://github.com/*"],
-      "js": ["content/pipeline.js", "content/comments.js", "content/content.js"],
+      "js": ["content/pipeline.js", "content/comments.js", "content/vulns.js", "content/content.js"],
       "run_at": "document_idle"
     }
   ]

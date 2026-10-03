@@ -5,10 +5,11 @@ Unofficial Chrome extension that skins [github.com](https://github.com) so it re
 ## What it changes
 
 - Light content surface, blue primary actions, and an orange accent, using colors from GitLab's Pajamas palette.
-- A fixed super sidebar on repository pages: Repository, Issues, Merge requests, CI/CD, Wiki (when the repo has one), Insights, and Settings. The horizontal repository tabs are hidden while the skin is on.
+- A fixed super sidebar on repository pages: Repository, Issues, Merge requests, CI/CD, Wiki (when the repo has one), Insights, and Settings. Issues and Merge requests show the same counts GitHub already puts on those tabs. The horizontal repository tabs are hidden while the skin is on.
 - Visible headings that say "Pull request" or "Pull requests" display as "Merge request" or "Merge requests".
 - GitHub Actions lists render as pipeline rows (status, pipeline number, commit link, branch, actor, duration). A workflow run renders as stage columns. Job names that share a prefix such as `test / node 18` share a stage. The job log page gets a GitLab-style header and a link back to `Pipeline #<id>`. Log text is unchanged. Rerun and cancel stay GitHub's controls.
 - On a pull request conversation, **Oldest** / **Newest** reorders comments. The description stays at the top and the comment box stays at the bottom. Replies inside a review thread follow the same direction, including on the Files changed tab, without moving threads off their lines. The choice is saved in `chrome.storage.local`.
+- Open Dependabot alerts for the repository are highlighted in manifest files and in Actions job logs. A vulnerable package name is marked on the manifest Dependabot named, and on log lines that mention that package with a vulnerable version or an advisory id. Advisory ids such as `GHSA-…` or `CVE-…` are marked wherever they appear in code or logs. Dismissed alerts are skipped. The extension reads alerts from GitHub's Dependabot page for that repository and remembers them in `chrome.storage.local`. It does not call the GitHub API and does not add exploit detail.
 
 The skin is on by default. The toolbar popup turns it off.
 
