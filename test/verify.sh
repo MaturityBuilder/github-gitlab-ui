@@ -54,4 +54,5 @@ echo "Fixture harness passed"
 
 if [[ -x /opt/google/chrome/chrome ]]; then
   CHROME_BIN=/opt/google/chrome/chrome node "$ROOT/test/live-check.mjs"
+  GL_LOOK_HEADLESS=1 GL_LOOK_CHECK=1 "$ROOT/scripts/install-local.sh" https://github.com/cli/cli
 fi

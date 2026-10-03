@@ -29,7 +29,7 @@ Optional environment variables:
 
 The script looks for `google-chrome`, `google-chrome-stable`, `chromium`, then `chromium-browser`. If none of those exist, it prints the manual steps and exits.
 
-Chrome 137 and newer ignore `--load-extension`. On those builds the script still uses a throwaway profile and loads the extension through Chrome's debugging pipe (`Extensions.loadUnpacked`), which needs Node. Chromium keeps using `--load-extension` directly.
+Chrome 137 and newer ignore `--load-extension`. On those builds the script still uses a throwaway profile and loads the extension through Chrome's debugging pipe (`Extensions.loadUnpacked`), which needs Node. It follows shell wrappers such as `google-chrome` to the real `chrome` executable, because those wrappers replace the debugging pipe. Chromium keeps using `--load-extension` directly.
 
 ### Load unpacked
 

@@ -44,6 +44,36 @@ Load the extension manually:
 EOF
 }
 
+is_shell_script() {
+  local path="$1" signature
+  [[ -f "$path" ]] || return 1
+  signature="$(head -c 2 "$path" 2>/dev/null || true)"
+  [[ "$signature" == "#!" ]]
+}
+
+# Chrome's shell wrappers redirect stdio and often inject their own
+# --user-data-dir and --remote-debugging-port. That breaks the debugging
+# pipe used to load an unpacked extension. Follow the wrapper to the ELF.
+resolve_chrome_binary() {
+  local bin="$1" resolved dir nested
+  resolved="$(readlink -f "$bin" 2>/dev/null || printf '%s\n' "$bin")"
+  if ! is_shell_script "$resolved"; then
+    printf '%s\n' "$resolved"
+    return 0
+  fi
+  dir="$(dirname "$resolved")"
+  if [[ -x "$dir/chrome" ]] && ! is_shell_script "$dir/chrome"; then
+    printf '%s\n' "$dir/chrome"
+    return 0
+  fi
+  nested="$(grep -oE '/[[:graph:]]*(google-chrome|chromium)[[:graph:]]*' "$resolved" | head -1 || true)"
+  if [[ -n "$nested" && "$nested" != "$resolved" && -e "$nested" ]]; then
+    resolve_chrome_binary "$nested"
+    return 0
+  fi
+  printf '%s\n' "$resolved"
+}
+
 if ! BIN="$(find_browser)"; then
   print_manual
   exit 1
@@ -82,7 +112,20 @@ Load it manually:
 EOF
     exit 1
   fi
-  export CHROME_BIN="$BIN"
+  REAL="$(resolve_chrome_binary "$BIN")"
+  if is_shell_script "$REAL"; then
+    cat <<EOF >&2
+Chrome at $BIN is a wrapper, and this build ignores --load-extension.
+Set CHROME_BIN to the chrome executable (not the shell wrapper) and run again.
+Load it manually in the meantime:
+  1. Open chrome://extensions
+  2. Enable Developer mode
+  3. Click Load unpacked
+  4. Select: $EXT
+EOF
+    exit 1
+  fi
+  export CHROME_BIN="$REAL"
   exec node "$ROOT/scripts/launch-chrome.mjs" "$EXT" "$PROFILE" "$@"
 fi
 
