@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>GitLab look harness</title>
+  </head>
+  <body>
+    <pre id="out"></pre>
+    <script src="../extension/content/pipeline.js"></script>
+    <script src="../extension/content/comments.js"></script>
+    <script src="../extension/content/content.js"></script>
+    <script>
+      const failures = [];
+      function assert(condition, message) {
+        if (!condition) failures.push(message);
+      }
+
+      assert(GitLabLook.parseStatus("completed successfully: ") === "success", "success status");
+      assert(GitLabLook.parseStatus("failed: ") === "failed", "failed status");
+      assert(GitLabLook.parseStatus("in progress: ") === "running", "running status");
+      assert(GitLabLook.parseStatus("skipped: ") === "skipped", "skipped status");
+
+      const staged = GitLabLook.groupIntoStages(
+        GitLabLook.topologicalColumns([
+          { id: "build", name: "build", status: "success", needs: [], href: "/job/1", duration: "30s" },
+          { id: "n18", name: "test / node 18", status: "failed", needs: ["build"], href: "/job/2", duration: "" },
+          { id: "n20", name: "test / node 20", status: "success", needs: ["build"], href: "/job/3", duration: "" },
+          { id: "deploy", name: "deploy", status: "running", needs: ["n18", "n20"], href: "/job/4", duration: "2m" },
+        ])
+      );
+      assert(staged.map((stage) => stage.name).join(",") === "build,test,deploy", "stage names: " + staged.map((stage) => stage.name).join(","));
+      assert(staged[1].status === "failed", "test stage worst status");
+      assert(staged[1].jobs.length === 2, "matrix jobs share a stage");
+      assert(staged[2].status === "running", "deploy stage status");
+
+      document.body.dataset.glPath = "/acme/widgets";
+      document.body.innerHTML = [
+        '<header role="banner"><input name="q" /></header>',
+        '<nav aria-label="Repository" class="js-repo-nav">',
+        '<a id="code-tab" href="/acme/widgets"><span data-content="Code">Code</span></a>',
+        '<a id="issues-tab" href="/acme/widgets/issues">Issues</a>',
+        '<a id="pull-requests-tab" href="/acme/widgets/pulls"><span data-content="Pull requests">Pull requests</span></a>',
+        '<a id="actions-tab" href="/acme/widgets/actions"><span data-content="Actions">Actions</span></a>',
+        '<a id="wiki-tab" href="/acme/widgets/wiki">Wiki</a>',
+        '<a id="insights-tab" href="/acme/widgets/pulse">Insights</a>',
+        '<a id="settings-tab" href="/acme/widgets/settings">Settings</a>',
+        "</nav>",
+        "<h1>Pull requests</h1>",
+      ].join("");
+      document.title = "Pull requests · acme/widgets · GitHub";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.documentElement.classList.contains("gl-look"), "skin class");
+      assert(document.documentElement.classList.contains("gl-look-repo"), "repo class");
+      const labels = [...document.querySelectorAll("#gl-sidebar .gl-nav a")].map((node) => node.textContent);
+      assert(labels.join("|") === "Repository|Issues|Merge requests|CI/CD|Wiki|Insights|Settings", "sidebar labels: " + labels.join("|"));
+      assert(document.querySelector("#gl-sidebar .gl-nav a[aria-current='page']").textContent === "Repository", "repo section active");
+      assert(document.querySelector("h1").textContent === "Merge requests", "heading remap");
+      assert(document.title.indexOf("Merge requests") === 0, "title remap: " + document.title);
+
+      document.body.dataset.glPath = "/acme/widgets/pulls";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.querySelector("#gl-sidebar .gl-nav a[aria-current='page']").dataset.section === "pulls", "merge requests active");
+
+      document.body.innerHTML = [
+        '<nav aria-label="Repository"><a id="code-tab" href="/acme/widgets">Code</a></nav>',
+      ].join("");
+      document.body.dataset.glPath = "/acme/widgets";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const noWiki = [...document.querySelectorAll("#gl-sidebar .gl-nav a")].map((node) => node.textContent);
+      assert(!noWiki.includes("Wiki"), "wiki omitted: " + noWiki.join("|"));
+      assert(noWiki.includes("Settings"), "settings kept");
+
+      document.body.dataset.glPath = "/acme/widgets/actions";
+      document.body.innerHTML = [
+        '<h1>Workflow runs</h1>',
+        '<span class="ActionListItem-label">All workflows</span>',
+        '<h3 class="ActionList-sectionDivider-title">Workflows</h3>',
+        '<div class="Box-row">',
+        '<a href="/acme/widgets/actions/runs/37147564835" aria-label="completed successfully: build">',
+        '<svg aria-label="completed successfully: "></svg>',
+        '<span class="h4 markdown-title">Add widget</span>',
+        "</a>",
+        "<span>#42604:</span>",
+        '<a href="/acme/widgets/tree/main">main</a>',
+        '<a data-hovercard-type="user" href="/octocat">octocat</a>',
+        '<span><svg aria-label="Run duration"></svg>1m 4s</span>',
+        "</div>",
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const row = document.querySelector(".gl-pipeline-row");
+      assert(row, "pipeline row");
+      assert(document.querySelector(".gl-pipeline-badge").textContent === "passed", "passed badge");
+      assert(document.querySelector(".gl-pipeline-id").textContent === "#42604", "pipeline number");
+      assert(document.querySelector(".gl-pipeline-id").getAttribute("href").indexOf("/actions/runs/37147564835") > -1, "run link");
+      assert(document.querySelector(".gl-branch-pill").textContent === "main", "branch pill");
+      assert(document.querySelector(".gl-pipeline-meta").textContent.indexOf("octocat") > -1, "actor");
+      assert(document.querySelector(".gl-pipeline-meta").textContent.indexOf("1m 4s") > -1, "duration");
+      assert(document.querySelector(".ActionListItem-label").textContent.trim() === "All pipelines", "all pipelines label");
+      assert(document.querySelector("h1").textContent === "Pipelines", "pipeline heading");
+
+      document.body.dataset.glPath = "/acme/widgets/actions/runs/42";
+      document.body.innerHTML = [
+        "<action-graph>",
+        '<div class="WorkflowGraph">',
+        '<div class="WorkflowStage">',
+        '<streaming-graph-job data-job-id="build" data-needs="">',
+        '<a href="/acme/widgets/actions/runs/42/job/1">',
+        '<svg aria-label="completed successfully: "></svg>',
+        '<span data-target="streaming-graph-job.name">build</span>',
+        "</a>",
+        '<span class="duration">30s</span>',
+        "</streaming-graph-job>",
+        "</div>",
+        '<div class="WorkflowStage">',
+        '<streaming-graph-job data-job-id="node18" data-needs="build">',
+        '<a href="/acme/widgets/actions/runs/42/job/2">',
+        '<svg aria-label="failed: "></svg>',
+        '<span class="workflow-path-first-item" data-target="streaming-graph-job.name">test</span><span>/</span><span>node 18</span>',
+        "</a>",
+        "</streaming-graph-job>",
+        '<streaming-graph-job data-job-id="node20" data-needs="build">',
+        '<a href="/acme/widgets/actions/runs/42/job/3">',
+        '<svg aria-label="completed successfully: "></svg>',
+        '<span class="workflow-path-first-item" data-target="streaming-graph-job.name">test</span><span>/</span><span>node 20</span>',
+        "</a>",
+        "</streaming-graph-job>",
+        "</div>",
+        '<div class="WorkflowStage">',
+        '<streaming-graph-job data-job-id="deploy" data-needs="node18,node20">',
+        '<a href="/acme/widgets/actions/runs/42/job/4">',
+        '<svg aria-label="in progress: "></svg>',
+        '<span data-target="streaming-graph-job.name">deploy</span>',
+        "</a>",
+        '<span class="duration">2m</span>',
+        "</streaming-graph-job>",
+        "</div>",
+        "</div>",
+        "</action-graph>",
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const stageNames = [...document.querySelectorAll(".gl-stage-head span:first-child")].map((node) => node.textContent);
+      assert(stageNames.join(",") === "build,test,deploy", "graph stages: " + stageNames.join(","));
+      assert(document.querySelectorAll(".gl-stage")[1].querySelector(".gl-status").textContent === "failed", "column status");
+      assert(document.querySelectorAll(".gl-job-pill").length === 4, "four job pills");
+      assert(document.querySelector(".gl-job-pill[href$='/job/1'] .gl-job-duration").textContent === "30s", "job duration");
+      assert(document.querySelector("action-graph").classList.contains("gl-native-graph-hidden"), "native graph hidden");
+
+      document.body.dataset.glPath = "/acme/widgets/actions/runs/42/job/4";
+      document.body.innerHTML = [
+        '<a id="check-step-header-title"><span>deploy</span></a>',
+        '<div class="js-check-steps"><svg aria-label="in progress: "></svg>',
+        '<div class="js-check-step">Set up job</div>',
+        '<div class="js-check-step">Run deploy</div>',
+        "</div>",
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const jobBar = document.getElementById("gl-job-bar");
+      assert(jobBar, "job bar");
+      assert(jobBar.textContent.indexOf("deploy") > -1, "job name");
+      assert(jobBar.textContent.indexOf("running") > -1, "job status");
+      assert(jobBar.querySelector("a").textContent === "Pipeline #42", "pipeline back link");
+      assert(jobBar.querySelector("a").getAttribute("href") === "/acme/widgets/actions/runs/42", "pipeline href");
+      assert(document.querySelector(".js-check-step").textContent === "Set up job", "log text kept");
+
+      document.body.dataset.glPath = "/acme/widgets/pull/7";
+      document.title = "Add widget by octocat · Pull Request #7 · acme/widgets · GitHub";
+      document.body.innerHTML = [
+        "<h2>Conversation</h2>",
+        '<div class="js-discussion">',
+        '<div class="js-comment-container" id="desc">Description</div>',
+        '<div class="js-timeline-item" id="c1">Comment one</div>',
+        '<div class="js-timeline-item" id="sys">force-pushed</div>',
+        '<div class="js-timeline-item" id="c2">Comment two</div>',
+        '<div class="js-timeline-item" id="c3">Comment three',
+        '<div class="js-comments-holder">',
+        '<div class="timeline-comment-group" id="r1">Reply one</div>',
+        '<div class="timeline-comment-group" id="r2">Reply two</div>',
+        "</div></div>",
+        "</div>",
+        '<div id="issue-comment-box">Composer</div>',
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      function timelineIds() {
+        return [...document.querySelectorAll(".js-timeline-item")].map((node) => node.id).join(",");
+      }
+      function replyIds() {
+        return [...document.querySelectorAll(".timeline-comment-group")].map((node) => node.id).join(",");
+      }
+      assert(timelineIds() === "c1,sys,c2,c3", "oldest timeline: " + timelineIds());
+      assert(replyIds() === "r1,r2", "oldest replies: " + replyIds());
+      assert(document.querySelector(".js-discussion").firstElementChild.id === "desc", "description stays first");
+      assert(document.body.lastElementChild.id === "issue-comment-box", "composer stays last");
+      assert(document.getElementById("gl-comment-order"), "order control");
+      assert(document.title.indexOf("Merge request #7") > -1, "pr title: " + document.title);
+
+      document.querySelector("#gl-comment-order button[data-order='desc']").click();
+      assert(timelineIds() === "c3,c2,sys,c1", "newest timeline: " + timelineIds());
+      assert(replyIds() === "r2,r1", "newest replies: " + replyIds());
+      assert(document.querySelector(".js-discussion").firstElementChild.id === "desc", "description pinned");
+      assert(document.body.lastElementChild.id === "issue-comment-box", "composer pinned");
+      assert(document.querySelector("#gl-comment-order button[data-order='desc']").getAttribute("aria-pressed") === "true", "newest pressed");
+
+      document.querySelector("#gl-comment-order button[data-order='asc']").click();
+      assert(timelineIds() === "c1,sys,c2,c3", "restored timeline: " + timelineIds());
+      assert(replyIds() === "r1,r2", "restored replies: " + replyIds());
+
+      document.body.dataset.glPath = "/acme/widgets/pull/7/files";
+      GitLabLook.render(document, { enabled: true, commentOrder: "desc" });
+      assert(!document.getElementById("gl-comment-order"), "control hidden on files tab");
+      assert(replyIds() === "r2,r1", "files tab replies reversed");
+
+      document.body.dataset.glPath = "/acme/widgets";
+      document.title = "Pull requests · acme/widgets · GitHub";
+      document.body.innerHTML = "<h1>Pull requests</h1><nav aria-label=\"Repository\"></nav>";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.querySelector("h1").textContent === "Merge requests", "heading skinned before restore");
+      GitLabLook.render(document, { enabled: false, commentOrder: "asc" });
+      assert(!document.documentElement.classList.contains("gl-look"), "skin off");
+      assert(!document.getElementById("gl-sidebar"), "sidebar removed");
+      assert(document.querySelector("h1").textContent === "Pull requests", "heading restored");
+      assert(document.title === "Pull requests · acme/widgets · GitHub", "title restored: " + document.title);
+
+      document.documentElement.dataset.result = failures.length ? "fail" : "pass";
+      document.body.innerHTML = '<pre id="out"></pre>';
+      document.getElementById("out").textContent = (failures.length ? "FAIL\n" : "PASS\n") + failures.join("\n");
+    </script>
+  </body>
+</html>

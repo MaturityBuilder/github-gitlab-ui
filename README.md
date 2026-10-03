@@ -1,1 +1,47 @@
-# github-gitlab-ui
+# GitLab Look for GitHub
+
+Unofficial Chrome extension that skins [github.com](https://github.com) so it reads more like GitLab. GitHub links, forms, and data stay as they are. This project is not affiliated with GitLab or GitHub.
+
+## What it changes
+
+- Light content surface, blue primary actions, and an orange accent, using colors from GitLab's Pajamas palette.
+- A fixed super sidebar on repository pages: Repository, Issues, Merge requests, CI/CD, Wiki (when the repo has one), Insights, and Settings. The horizontal repository tabs are hidden while the skin is on.
+- Visible headings that say "Pull request" or "Pull requests" display as "Merge request" or "Merge requests".
+- GitHub Actions lists render as pipeline rows (status, pipeline number, commit link, branch, actor, duration). A workflow run renders as stage columns. Job names that share a prefix such as `test / node 18` share a stage. The job log page gets a GitLab-style header and a link back to `Pipeline #<id>`. Log text is unchanged. Rerun and cancel stay GitHub's controls.
+- On a pull request conversation, **Oldest** / **Newest** reorders comments. The description stays at the top and the comment box stays at the bottom. Replies inside a review thread follow the same direction, including on the Files changed tab, without moving threads off their lines. The choice is saved in `chrome.storage.local`.
+
+The skin is on by default. The toolbar popup turns it off.
+
+## Install for local testing
+
+`scripts/install-local.sh` starts Chrome or Chromium with this extension in a throwaway profile. It does not change your everyday browser profile.
+
+```bash
+./scripts/install-local.sh
+./scripts/install-local.sh https://github.com/cli/cli
+```
+
+Optional environment variables:
+
+- `CHROME_BIN` — browser executable
+- `EXTENSION_DIR` — path to the extension directory (defaults to `extension/`)
+- `CHROME_USER_DATA_DIR` — reuse a profile directory instead of a new temp folder
+
+The script looks for `google-chrome`, `google-chrome-stable`, `chromium`, then `chromium-browser`. If none of those exist, it prints the manual steps and exits.
+
+Chrome 137 and newer ignore `--load-extension`. On those builds the script still uses a throwaway profile and loads the extension through Chrome's debugging pipe (`Extensions.loadUnpacked`), which needs Node. Chromium keeps using `--load-extension` directly.
+
+### Load unpacked
+
+1. Open `chrome://extensions`.
+2. Turn on Developer mode.
+3. Choose Load unpacked.
+4. Select the `extension/` directory.
+
+## Check the fixtures
+
+```bash
+./test/verify.sh
+```
+
+That checks the install script flags, runs the pipeline, sidebar, and comment-order fixtures in headless Chrome, and loads the extension against public GitHub pages when Chrome is available.
