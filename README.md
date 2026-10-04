@@ -46,3 +46,23 @@ Chrome 137 and newer ignore `--load-extension`. On those builds the script still
 ```
 
 That checks the install script flags, runs the pipeline, sidebar, and comment-order fixtures in headless Chrome, and loads the extension against public GitHub pages when Chrome is available.
+
+## Publish to the Chrome Web Store
+
+`.github/workflows/chrome.yml` tests the extension, packages `extension/` into a zip, and publishes that zip to the Chrome Web Store. The publish job runs when a `v*` tag is pushed, and when the workflow is started by hand on `main`. A tag publishes to everyone. A manual run publishes to the target you pick, trusted testers by default. Pull requests only run the test and package jobs.
+
+The Chrome Web Store item has to exist already, because the API updates an item by its id. Upload the zip once in the [developer dashboard](https://chrome.google.com/webstore/devconsole) and copy the item id. Each upload also has to use a higher `version` in `extension/manifest.json` than the version already on the store.
+
+Add these repository secrets:
+
+- `CHROME_EXTENSION_ID` — the store item id
+- `CHROME_CLIENT_ID` — OAuth client id from a Google Cloud project with the Chrome Web Store API enabled
+- `CHROME_CLIENT_SECRET` — that client's secret
+- `CHROME_REFRESH_TOKEN` — a refresh token for `https://www.googleapis.com/auth/chromewebstore`
+
+The token comes from the [Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api) OAuth flow. After the secrets are set, publish with a tag:
+
+```bash
+git tag v1.1.0
+git push origin v1.1.0
+```
