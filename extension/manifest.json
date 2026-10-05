@@ -4,7 +4,6 @@
   "version": "1.1.0",
   "description": "Unofficial skin that gives GitHub a GitLab-style layout, pipelines, and comment order.",
   "permissions": ["storage"],
-  "host_permissions": ["https://github.com/*"],
   "action": {
     "default_title": "GitLab Look",
     "default_popup": "popup/popup.html",

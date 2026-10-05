@@ -39,9 +39,9 @@ The skin is on by default. The toolbar popup turns it off. This project is not a
 
 ## Permissions
 
-The `storage` permission is required. `chrome.storage.local` keeps three things on this computer: whether the skin is on, the Oldest or Newest choice, and the Dependabot alerts already read for a repository. Without `storage`, the skin still draws, and those three choices do not stick.
+The manifest requests one permission: `storage`. `chrome.storage.local` keeps three things on this computer: whether the skin is on, the Oldest or Newest choice, and the Dependabot alerts already read for a repository. Without `storage`, the skin still draws, and those three choices do not stick.
 
-`host_permissions` for `https://github.com/*` is listed in `extension/manifest.json`, and the features do not use it. The style sheet and scripts are limited to GitHub by the content-script match. The Dependabot page is read with an ordinary fetch from the GitHub tab you already have open, using the GitHub session already in that tab. The popup and the rest of the extension do not request GitHub on their own.
+There is no `host_permissions` entry. The style sheet and scripts are limited to GitHub by the content-script match on `https://github.com/*`. The Dependabot page is read with an ordinary fetch from the GitHub tab you already have open, using the GitHub session already in that tab. The popup does not request GitHub on its own.
 
 Chrome still asks to read and change data on `github.com`. That prompt comes from the content scripts, which have to run on GitHub pages to draw the sidebar, pipelines, comment order, and highlights.
 
