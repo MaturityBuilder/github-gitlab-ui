@@ -46,7 +46,15 @@ timeout 30 "$CHROME" \
 
 if ! grep -q 'data-result="pass"' "$DUMP" && ! grep -q "PASS" "$DUMP"; then
   echo "Fixture harness failed" >&2
-  cat "$DUMP" >&2
+  if [[ -s /tmp/gl-look-chrome.err ]]; then
+    echo "Chrome stderr:" >&2
+    tail -n 40 /tmp/gl-look-chrome.err >&2
+  fi
+  if [[ -s "$DUMP" ]]; then
+    cat "$DUMP" >&2
+  else
+    echo "Chrome produced no DOM." >&2
+  fi
   exit 1
 fi
 
@@ -54,5 +62,5 @@ echo "Fixture harness passed"
 
 if [[ -x /opt/google/chrome/chrome ]]; then
   CHROME_BIN=/opt/google/chrome/chrome node "$ROOT/test/live-check.mjs"
-  GL_LOOK_HEADLESS=1 GL_LOOK_CHECK=1 "$ROOT/scripts/install-local.sh" https://github.com/cli/cli
+  CHROME_BIN=/opt/google/chrome/chrome GL_LOOK_HEADLESS=1 GL_LOOK_CHECK=1 "$ROOT/scripts/install-local.sh" https://github.com/cli/cli
 fi

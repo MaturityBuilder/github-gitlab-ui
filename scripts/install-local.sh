@@ -93,9 +93,9 @@ fi
 chrome_ignores_load_extension() {
   local version major
   version="$("$BIN" --version 2>/dev/null || true)"
-  [[ "$version" == Google\ Chrome\ * ]] || return 1
-  major="${version#Google Chrome }"
-  major="${major%%.*}"
+  [[ "$version" == Google\ Chrome* ]] || return 1
+  major="$(printf '%s\n' "$version" | grep -oE '[0-9]+' | head -n 1)"
+  [[ -n "${major:-}" ]] || return 1
   [[ "$major" -ge 137 ]]
 }
 
