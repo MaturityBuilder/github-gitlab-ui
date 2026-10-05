@@ -49,7 +49,9 @@ That checks the install script flags, runs the pipeline, sidebar, and comment-or
 
 ## Publish to the Chrome Web Store
 
-`.github/workflows/chrome.yml` tests the extension, packages `extension/` into a zip, and publishes that zip to the Chrome Web Store. The publish job runs when a `v*` tag is pushed, and when the workflow is started by hand on `main`. A tag publishes to everyone. A manual run publishes to the target you pick, trusted testers by default. Pull requests only run the test and package jobs.
+`.github/workflows/chrome.yml` tests the extension and publishes it to the Chrome Web Store. The publish job runs when a `v*` tag is pushed, and when the workflow is started by hand on `main`. A tag publishes to everyone. A manual run publishes to the target you pick, trusted testers by default. Pull requests only run the test and package jobs.
+
+The package job uploads the files inside `extension/`. Download the `gitlab-look` artifact from the Actions run and you get a zip with `manifest.json` at the root, which is the package the Chrome Web Store accepts. A zip of the `extension` folder itself, or a zip that only contains another zip, is rejected with "No manifest found in package."
 
 The Chrome Web Store item has to exist already, because the API updates an item by its id. Upload the zip once in the [developer dashboard](https://chrome.google.com/webstore/devconsole) and copy the item id. Each upload also has to use a higher `version` in `extension/manifest.json` than the version already on the store.
 

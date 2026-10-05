@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 bash -n "$ROOT/scripts/install-local.sh"
+bash -n "$ROOT/scripts/package-extension.sh"
+"$ROOT/scripts/package-extension.sh" /tmp/gl-look-package.zip "$ROOT/extension" >/dev/null
 
 FLAGS="$(CHROME_BIN=/bin/echo "$ROOT/scripts/install-local.sh" https://github.com/cli/cli)"
 echo "$FLAGS" | grep -q -- "--load-extension=$ROOT/extension"
