@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "GitLab Look for GitHub",
   "version": "1.1.0",
-  "description": "Unofficial skin that renders GitHub with a GitLab-style layout, pipeline graph, pull request comment order, and Dependabot highlights.",
+  "description": "Unofficial skin that gives GitHub a GitLab-style layout, pipelines, and comment order.",
   "permissions": ["storage"],
   "host_permissions": ["https://github.com/*"],
   "action": {
