@@ -20,11 +20,11 @@ These are github.com/cli/cli with the skin on. Each image is 1280 by 800.
 
 ## Product description
 
-GitLab Look for GitHub is an unofficial Chrome extension. It shows [github.com](https://github.com) in a GitLab-style layout. GitHub links, forms, and data stay as they are.
+GitLab Look for GitHub is a Maturity Builder GitLab Overlay skin. It shows [github.com](https://github.com) in a GitLab-style layout, focusing information around security and workflow efficiency. GitHub links, forms, and data stay as they are.
 
 Repository pages use a sidebar instead of the horizontal tabs. Issues and merge requests keep the counts GitHub already shows. Visible "Pull request" headings read as "Merge request," and "Actions" reads as "CI/CD."
 
-GitHub Actions lists appear as pipeline rows, and a workflow run appears as stage columns. On a pull request, Oldest and Newest reorder the conversation. Open Dependabot alerts are highlighted in dependency files and job logs. Dismissed alerts are left alone. Those details stay in the browser.
+The overlay keeps workflow details close at hand: GitHub Actions lists appear as pipeline rows, a workflow run appears as stage columns, and Oldest and Newest reorder a pull request conversation. Security information is brought onto the same pages: open Dependabot alerts are highlighted in dependency files and job logs. Dismissed alerts are left alone. Those details stay in the browser.
 
 The skin is on by default. The toolbar popup turns it off. This project is not affiliated with GitLab or GitHub.
 
