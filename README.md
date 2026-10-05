@@ -1,6 +1,14 @@
 # GitLab Look for GitHub
 
-Unofficial Chrome extension that skins [github.com](https://github.com) so it reads more like GitLab. GitHub links, forms, and data stay as they are. This project is not affiliated with GitLab or GitHub.
+## Product description
+
+GitLab Look for GitHub is an unofficial Chrome extension. It shows [github.com](https://github.com) in a GitLab-style layout. GitHub links, forms, and data stay as they are.
+
+Repository pages use a sidebar instead of the horizontal tabs. Issues and merge requests keep the counts GitHub already shows. Visible "Pull request" headings read as "Merge request," and "Actions" reads as "CI/CD."
+
+GitHub Actions lists appear as pipeline rows, and a workflow run appears as stage columns. On a pull request, Oldest and Newest reorder the conversation. Open Dependabot alerts are highlighted in dependency files and job logs. Dismissed alerts are left alone. Those details stay in the browser.
+
+The skin is on by default. The toolbar popup turns it off. This project is not affiliated with GitLab or GitHub.
 
 ## What it changes
 
@@ -10,8 +18,6 @@ Unofficial Chrome extension that skins [github.com](https://github.com) so it re
 - GitHub Actions lists render as pipeline rows (status, pipeline number, commit link, branch, actor, duration). A workflow run renders as stage columns. Job names that share a prefix such as `test / node 18` share a stage. The job log page gets a GitLab-style header and a link back to `Pipeline #<id>`. Log text is unchanged. Rerun and cancel stay GitHub's controls.
 - On a pull request conversation, **Oldest** / **Newest** reorders comments. The description stays at the top and the comment box stays at the bottom. Replies inside a review thread follow the same direction, including on the Files changed tab, without moving threads off their lines. The choice is saved in `chrome.storage.local`.
 - Open Dependabot alerts for the repository are highlighted in manifest files and in Actions job logs. A vulnerable package name is marked on the manifest Dependabot named, and on log lines that mention that package with a vulnerable version or an advisory id. Advisory ids such as `GHSA-…` or `CVE-…` are marked wherever they appear in code or logs. Dismissed alerts are skipped. The extension reads alerts from GitHub's Dependabot page for that repository and remembers them in `chrome.storage.local`. It does not call the GitHub API and does not add exploit detail.
-
-The skin is on by default. The toolbar popup turns it off.
 
 ## Install for local testing
 
