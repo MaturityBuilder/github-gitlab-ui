@@ -1,0 +1,91 @@
+name: Chrome extension
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      publish_target:
+        description: Who receives the Chrome Web Store release
+        type: choice
+        options:
+          - default
+          - trustedTesters
+        default: trustedTesters
+
+permissions:
+  contents: read
+
+concurrency:
+  group: chrome-extension-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Install Chrome libraries
+        uses: browser-actions/setup-chrome@48ad923757ca74d66703209fe939badbdf80f2f4 # v2.2.0
+        with:
+          install-dependencies: true
+
+      - name: Install Chrome headless shell
+        id: chrome
+        run: ./scripts/install-chrome-headless-shell.sh
+
+      - name: Run checks
+        env:
+          CHROME_BIN: ${{ steps.chrome.outputs.chrome-path }}
+        run: ./test/verify.sh
+
+  package:
+    name: Package
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Check the package layout
+        run: ./scripts/package-extension.sh dist/gitlab-look.zip
+
+      - name: Upload package
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: gitlab-look
+          path: extension
+          if-no-files-found: error
+
+  publish:
+    name: Publish to Chrome Web Store
+    needs: [test, package]
+    if: (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Download package
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: gitlab-look
+          path: packaged
+
+      - name: Zip the extension
+        run: ./scripts/package-extension.sh dist/gitlab-look.zip packaged
+
+      - name: Upload and publish
+        uses: mnao305/chrome-extension-upload@fdfe79400af990f5145a319e834aee64907ccff4 # v6.0.0
+        with:
+          file-path: dist/gitlab-look.zip
+          extension-id: ${{ secrets.CHROME_EXTENSION_ID }}
+          client-id: ${{ secrets.CHROME_CLIENT_ID }}
+          client-secret: ${{ secrets.CHROME_CLIENT_SECRET }}
+          refresh-token: ${{ secrets.CHROME_REFRESH_TOKEN }}
+          publish: true
+          publish-target: ${{ github.event.inputs.publish_target || 'default' }}
