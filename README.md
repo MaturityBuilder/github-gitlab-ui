@@ -2,6 +2,20 @@
 
 ![GitLab Look for GitHub: sidebar, pipelines, stage columns, and comment order](docs/promo.gif)
 
+![Small promo tile, 440 by 280](docs/promo-tile.png)
+
+## Screenshots
+
+These are github.com/cli/cli with the skin on. Each image is 1280 by 800.
+
+![Repository sidebar with issue and merge request counts](docs/screenshots/sidebar.png)
+
+![Actions runs shown as pipeline rows](docs/screenshots/pipelines.png)
+
+![A workflow run shown as stage columns](docs/screenshots/stages.png)
+
+![Oldest and Newest on a pull request](docs/screenshots/comments.png)
+
 ## Product description
 
 GitLab Look for GitHub is an unofficial Chrome extension. It shows [github.com](https://github.com) in a GitLab-style layout. GitHub links, forms, and data stay as they are.
