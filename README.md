@@ -1,5 +1,7 @@
 # GitLab Look for GitHub
 
+![GitLab Look for GitHub: sidebar, pipelines, stage columns, and comment order](docs/promo.gif)
+
 ## Product description
 
 GitLab Look for GitHub is an unofficial Chrome extension. It shows [github.com](https://github.com) in a GitLab-style layout. GitHub links, forms, and data stay as they are.
