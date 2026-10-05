@@ -37,6 +37,30 @@ The skin is on by default. The toolbar popup turns it off. This project is not a
 - On a pull request conversation, **Oldest** / **Newest** reorders comments. The description stays at the top and the comment box stays at the bottom. Replies inside a review thread follow the same direction, including on the Files changed tab, without moving threads off their lines. The choice is saved in `chrome.storage.local`.
 - Open Dependabot alerts for the repository are highlighted in manifest files and in Actions job logs. A vulnerable package name is marked on the manifest Dependabot named, and on log lines that mention that package with a vulnerable version or an advisory id. Advisory ids such as `GHSA-…` or `CVE-…` are marked wherever they appear in code or logs. Dismissed alerts are skipped. The extension reads alerts from GitHub's Dependabot page for that repository and remembers them in `chrome.storage.local`. It does not call the GitHub API and does not add exploit detail.
 
+## Permissions
+
+The `storage` permission is required. `chrome.storage.local` keeps three things on this computer: whether the skin is on, the Oldest or Newest choice, and the Dependabot alerts already read for a repository. Without `storage`, the skin still draws, and those three choices do not stick.
+
+`host_permissions` for `https://github.com/*` is listed in `extension/manifest.json`, and the features do not use it. The style sheet and scripts are limited to GitHub by the content-script match. The Dependabot page is read with an ordinary fetch from the GitHub tab you already have open, using the GitHub session already in that tab. The popup and the rest of the extension do not request GitHub on their own.
+
+Chrome still asks to read and change data on `github.com`. That prompt comes from the content scripts, which have to run on GitHub pages to draw the sidebar, pipelines, comment order, and highlights.
+
+## Privacy policy
+
+GitLab Look for GitHub handles data only inside your browser. It has no account, no analytics, and no server of its own. It does not sell data, and it does not send page contents, alerts, or settings to the author of this extension or to any other service.
+
+The extension runs on `https://github.com/*`. On a repository page it can read the Dependabot alert list GitHub already shows you at `/security/dependabot` for that repository. That read uses your existing GitHub login in the page. If GitHub sends you to a login page, the extension stores nothing from that response. It does not call the GitHub API and does not use a token.
+
+What it saves in `chrome.storage.local`:
+
+- `enabled` — whether the skin is on.
+- `commentOrder` — `asc` for Oldest, or `desc` for Newest.
+- `dependabotAlerts` — for each repository, the open alerts it has already parsed: alert number, package name, severity, manifest path, version range, advisory ids such as `GHSA-…` or `CVE-…`, the alert link, open or closed state, and the time that cache was saved.
+
+Those cached alerts are used to highlight matching package names, versions, and advisory ids in manifest files and Actions logs. Dismissed alerts are left alone. Removing the extension deletes this `chrome.storage.local` data.
+
+Pages you open on GitHub are still GitHub's. GitHub's own privacy policy covers what GitHub receives while you browse. This project is not affiliated with GitLab or GitHub.
+
 ## Install for local testing
 
 `scripts/install-local.sh` starts Chrome or Chromium with this extension in a throwaway profile. It does not change your everyday browser profile.
