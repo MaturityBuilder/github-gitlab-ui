@@ -2,6 +2,8 @@
 
 ![GitLab Look for GitHub: sidebar, pipelines, stage columns, and comment order](docs/promo.gif)
 
+![Marquee promo, 1400 by 560](docs/promo-marquee.gif)
+
 ![Small promo tile, 440 by 280](docs/promo-tile.png)
 
 ## Screenshots
