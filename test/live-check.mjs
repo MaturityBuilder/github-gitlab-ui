@@ -76,7 +76,7 @@ try {
   await send("Extensions.loadUnpacked", { path: extensionDir });
   const repo = await inspect(
     "https://github.com/cli/cli",
-    "JSON.stringify({ labels: [...document.querySelectorAll('#gl-sidebar .gl-nav .gl-nav-label')].map((node) => node.textContent), mr: ((document.querySelector('#gl-sidebar a[data-section=pulls] .gl-count') || {}).textContent || '').trim(), mrTab: ((document.getElementById('pull-requests-repo-tab-count') || {}).textContent || '').trim(), issues: ((document.querySelector('#gl-sidebar a[data-section=issues] .gl-count') || {}).textContent || '').trim(), issuesTab: ((document.getElementById('issues-repo-tab-count') || {}).textContent || '').trim() })"
+    "JSON.stringify({ labels: [...document.querySelectorAll('#gl-sidebar .gl-nav .gl-nav-label')].map((node) => node.textContent), mr: ((document.querySelector('#gl-sidebar a[data-section=pulls] .gl-count') || {}).textContent || '').trim(), mrTab: ((document.querySelector('a[data-tab-item=\"pull-requests\"] [data-component=\"CounterLabel\"]') || document.getElementById('pull-requests-repo-tab-count') || {}).textContent || '').trim(), issues: ((document.querySelector('#gl-sidebar a[data-section=issues] .gl-count') || {}).textContent || '').trim(), issuesTab: ((document.querySelector('a[data-tab-item=\"issues\"] [data-component=\"CounterLabel\"]') || document.getElementById('issues-repo-tab-count') || {}).textContent || '').trim() })"
   );
   assert(repo.labels.includes("Merge requests"), `sidebar labels: ${repo.labels.join("|")}`);
   assert(repo.labels.includes("CI/CD"), "missing CI/CD");

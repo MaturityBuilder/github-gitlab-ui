@@ -145,8 +145,12 @@
     return svg;
   }
 
-  function readCounter(doc, id, fallback) {
-    const node = doc.getElementById(id) || doc.querySelector(fallback);
+  function readCounter(doc, id, fallbacks) {
+    const selectors = Array.isArray(fallbacks) ? fallbacks : [fallbacks];
+    let node = id ? doc.getElementById(id) : null;
+    for (let i = 0; !node && i < selectors.length; i++) {
+      node = doc.querySelector(selectors[i]);
+    }
     if (!node) return null;
     const text = node.textContent.replace(/\s+/g, " ").trim();
     const title = (node.getAttribute("title") || "").trim();
@@ -156,8 +160,16 @@
 
   function navCounts(doc) {
     return {
-      issues: readCounter(doc, "issues-repo-tab-count", "#issues-tab .Counter"),
-      pulls: readCounter(doc, "pull-requests-repo-tab-count", "#pull-requests-tab .Counter"),
+      issues: readCounter(doc, "issues-repo-tab-count", [
+        "#issues-tab .Counter",
+        'a[data-tab-item="issues"] [data-component="CounterLabel"]',
+        'a[data-tab-item="issues"] [data-component="counter"] [aria-hidden="true"]',
+      ]),
+      pulls: readCounter(doc, "pull-requests-repo-tab-count", [
+        "#pull-requests-tab .Counter",
+        'a[data-tab-item="pull-requests"] [data-component="CounterLabel"]',
+        'a[data-tab-item="pull-requests"] [data-component="counter"] [aria-hidden="true"]',
+      ]),
     };
   }
 

@@ -87,6 +87,22 @@
       assert(document.querySelector("#gl-sidebar .gl-nav a[aria-current='page']").dataset.section === "pulls", "merge requests active");
 
       document.body.innerHTML = [
+        '<nav aria-label="Repository">',
+        '<a data-tab-item="code" href="/acme/widgets"><span data-component="text" data-content="Code">Code</span></a>',
+        '<a data-tab-item="issues" href="/acme/widgets/issues"><span data-component="text" data-content="Issues">Issues</span><span data-component="counter"><span aria-hidden="true" data-component="CounterLabel">1k</span></span></a>',
+        '<a data-tab-item="pull-requests" href="/acme/widgets/pulls"><span data-component="text" data-content="Pull requests">Pull requests</span><span data-component="counter"><span aria-hidden="true" data-component="CounterLabel">74</span></span></a>',
+        '<a data-tab-item="actions" href="/acme/widgets/actions"><span data-component="text" data-content="Actions">Actions</span></a>',
+        '<a data-tab-item="insights" href="/acme/widgets/pulse">Insights</a>',
+        '<a data-tab-item="settings" href="/acme/widgets/settings">Settings</a>',
+        "</nav>",
+      ].join("");
+      document.body.dataset.glPath = "/acme/widgets";
+      document.title = "acme/widgets";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.querySelector("#gl-sidebar a[data-section='issues'] .gl-count").textContent === "1k", "primer issue count");
+      assert(document.querySelector("#gl-sidebar a[data-section='pulls'] .gl-count").textContent === "74", "primer merge request count");
+
+      document.body.innerHTML = [
         '<nav aria-label="Repository"><a id="code-tab" href="/acme/widgets">Code</a></nav>',
       ].join("");
       document.body.dataset.glPath = "/acme/widgets";
