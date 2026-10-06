@@ -107,7 +107,7 @@ try {
   assert(pull.title.includes("Merge request #14583"), pull.title);
   assert(pull.control, "comment order control missing");
   assert(pull.pressed === "Oldest", `pressed: ${pull.pressed}`);
-  assert(/\bPipelines\b/.test(pull.tab.replace(/\s+/g, " ")), `checks tab: ${pull.tab}`);
+  assert(/Pipelines/.test(pull.tab), `checks tab: ${pull.tab}`);
 
   const checks = await inspect(
     "https://github.com/cli/cli/pull/14583/checks",

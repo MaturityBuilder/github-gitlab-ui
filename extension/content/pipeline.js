@@ -417,8 +417,7 @@
 
   function relabelChecksTab(doc) {
     checksTabLinks(doc).forEach((node) => {
-      const text = node.textContent.replace(/\s+/g, " ").trim();
-      if (text !== "Checks" && !/^Checks\b/.test(text)) return;
+      if (node.textContent.indexOf("Checks") === -1) return;
       if (!node.dataset.glOriginal) node.dataset.glOriginal = "Checks";
       replaceTextWord(node, "Checks", "Pipelines");
     });
@@ -457,7 +456,9 @@
 
   function extractCheckSuites(doc) {
     const suites = [];
-    const nodes = doc.querySelectorAll("details.checks-list-item, details[id^='sidebar_check_suite_']");
+    const nodes = doc.querySelectorAll(
+      "details.checks-list-item, details[id^='sidebar_check_suite_'], .js-check-suites-sidebar details"
+    );
     nodes.forEach((node) => {
       const runLink = [...node.querySelectorAll("a[href*='/actions/runs/']")].find(
         (link) => !/\/job\//.test(link.getAttribute("href") || "")
