@@ -133,7 +133,7 @@
   function valueAfterLabel(root, labelRe) {
     const nodes = root.querySelectorAll("dt, h1, h2, h3, h4, strong, span, div, p, th");
     for (const node of nodes) {
-      if (node.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar")) continue;
+      if (node.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar, #gl-mr-pipelines, #gl-mr-security")) continue;
       const text = spacedText(node);
       if (!text || text.length > 40 || !labelRe.test(text)) continue;
       const next = node.nextElementSibling;
@@ -495,7 +495,7 @@
   }
 
   function highlightLine(line, alerts, doc) {
-    if (line.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar, #gl-comment-order, .gl-vuln-note")) return;
+    if (line.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar, #gl-comment-order, #gl-mr-pipelines, #gl-mr-security, .gl-vuln-note")) return;
     const inLog = Boolean(line.closest("check-step, .js-check-step, #logs"));
     const file = inLog ? "" : fileFor(line, doc);
     const text = line.textContent || "";
@@ -545,26 +545,168 @@
     return [...doc.querySelectorAll("check-step, .js-check-step")];
   }
 
+  function pullFilePaths(doc) {
+    const files = [];
+    doc.querySelectorAll("[data-path], [data-tagsearch-path]").forEach((node) => {
+      const value = node.getAttribute("data-path") || node.getAttribute("data-tagsearch-path") || "";
+      if (value) files.push(value);
+    });
+    return files;
+  }
+
+  function alertsForMergeRequest(doc, alerts) {
+    const files = pullFilePaths(doc);
+    if (!files.length) return alerts.slice();
+    const matched = alerts.filter((alert) =>
+      files.some((file) => fileMatchesManifest(file, alert.manifest) || (alert.package && file.toLowerCase().indexOf(alert.package.toLowerCase()) > -1))
+    );
+    return matched.length ? matched : alerts.slice();
+  }
+
+  function sortAlerts(alerts) {
+    return alerts.slice().sort((a, b) => (SEVERITY_RANK[b.severity] || 0) - (SEVERITY_RANK[a.severity] || 0) || String(a.package).localeCompare(String(b.package)));
+  }
+
+  function isPullPage(path) {
+    return /\/pull\/\d+/.test(String(path || ""));
+  }
+
+  function isSecurityView(doc) {
+    return (GL.pageHash ? GL.pageHash(doc) : "") === "#gl-security";
+  }
+
+  function renderFinding(doc, alert) {
+    const row = doc.createElement("a");
+    row.className = "gl-security-finding";
+    row.href = alert.href || "#";
+    const badge = doc.createElement("span");
+    badge.className = "gl-status gl-severity-" + (alert.severity || "unknown");
+    badge.textContent = alert.severity === "unknown" ? "alert" : alert.severity;
+    const name = doc.createElement("span");
+    name.className = "gl-vuln";
+    name.dataset.severity = alert.severity || "unknown";
+    name.textContent = alert.package || alert.advisories[0] || "Dependabot alert";
+    const meta = doc.createElement("span");
+    meta.className = "gl-security-finding-meta";
+    meta.textContent = [alert.manifest, alert.range, alert.advisories[0]].filter(Boolean).join(" · ");
+    row.append(badge, name, meta);
+    return row;
+  }
+
+  function securityMount(doc) {
+    return (
+      doc.querySelector("#partial-discussion-sidebar") ||
+      doc.getElementById("gl-mr-pipelines") ||
+      doc.querySelector(".js-check-suites-sidebar")
+    );
+  }
+
+  function mountSecurityConsole(doc, host) {
+    const expanded = isSecurityView(doc);
+    host.className = "gl-mr-security gl-mr-console" + (expanded ? " is-expanded" : "");
+    const discussion = doc.querySelector("#partial-discussion-sidebar");
+    if (discussion) {
+      if (host.parentElement !== discussion) discussion.insertBefore(host, discussion.firstChild);
+      return;
+    }
+    const rail = GL.ensureMrRail ? GL.ensureMrRail(doc) : doc.getElementById("gl-mr-rail");
+    if (rail) {
+      const pipelines = doc.getElementById("gl-mr-pipelines");
+      if (pipelines && pipelines.parentElement === rail) rail.insertBefore(host, pipelines);
+      else rail.appendChild(host);
+      return;
+    }
+    const checks = doc.querySelector(".js-check-suites-sidebar");
+    if (checks && checks.parentElement) {
+      checks.parentElement.appendChild(host);
+      return;
+    }
+    if (expanded && !host.parentElement && doc.body) doc.body.appendChild(host);
+  }
+
+  function renderMrSecurity(doc, repo, alerts) {
+    const path = GL.pagePath ? GL.pagePath(doc) : "";
+    const existing = doc.getElementById("gl-mr-security");
+    if (!repo || !isPullPage(path) || (!securityMount(doc) && !isSecurityView(doc))) {
+      if (existing) existing.remove();
+      return;
+    }
+    const findings = sortAlerts(alertsForMergeRequest(doc, alerts));
+    const expanded = isSecurityView(doc);
+    const signature = findings.map((alert) => alert.number + ":" + alert.package + ":" + alert.severity + ":" + alert.state).join("|") + "|" + (expanded ? "1" : "0");
+    let host = doc.getElementById("gl-mr-security");
+    if (host && host.dataset.signature === signature) {
+      mountSecurityConsole(doc, host);
+      return;
+    }
+    if (!host) {
+      host = doc.createElement("aside");
+      host.id = "gl-mr-security";
+    }
+    host.dataset.signature = signature;
+    mountSecurityConsole(doc, host);
+    host.replaceChildren();
+    const heading = doc.createElement("h2");
+    heading.className = "gl-mr-security-title";
+    heading.textContent = "Security";
+    const summary = doc.createElement("p");
+    summary.className = "gl-mr-security-summary";
+    if (!findings.length) {
+      summary.textContent = "No open Dependabot findings";
+      const all = doc.createElement("a");
+      all.href = "/" + repo.owner + "/" + repo.repo + "/security/dependabot";
+      all.textContent = "Dependabot alerts";
+      host.append(heading, summary, all);
+      return;
+    }
+    const high = findings.filter((alert) => alert.severity === "critical" || alert.severity === "high").length;
+    summary.textContent =
+      findings.length +
+      " open Dependabot finding" +
+      (findings.length === 1 ? "" : "s") +
+      (high ? " · " + high + " high or critical" : "");
+    host.append(heading, summary);
+    findings.forEach((alert) => host.appendChild(renderFinding(doc, alert)));
+    const more = doc.createElement("a");
+    more.className = "gl-mr-security-more";
+    more.href = "/" + repo.owner + "/" + repo.repo + "/security/dependabot";
+    more.textContent = "All Dependabot alerts";
+    host.appendChild(more);
+  }
+
   function paint(doc, alerts) {
     if (!alerts.length) {
-      if (doc.querySelector(".gl-vuln, .gl-vuln-line, .gl-vuln-note")) clearVulns(doc);
+      clearLineHighlights(doc);
       return;
     }
     lineElements(doc).forEach((line) => highlightLine(line, alerts, doc));
   }
 
-  function clearVulns(doc) {
+  function clearLineHighlights(doc) {
     doc.querySelectorAll(".gl-vuln").forEach((mark) => {
+      if (mark.closest("#gl-mr-security")) return;
       const parent = mark.parentNode;
       if (!parent) return;
       parent.replaceChild(doc.createTextNode(mark.textContent), mark);
       parent.normalize();
     });
-    doc.querySelectorAll(".gl-vuln-note").forEach((note) => note.remove());
+    doc.querySelectorAll(".gl-vuln-note").forEach((note) => {
+      if (note.closest("#gl-mr-security")) return;
+      note.remove();
+    });
     doc.querySelectorAll(".gl-vuln-line").forEach((line) => {
+      if (line.closest("#gl-mr-security")) return;
       line.classList.remove("gl-vuln-line");
       delete line.dataset.severity;
     });
+  }
+
+  function clearVulns(doc) {
+    clearLineHighlights(doc);
+    const host = doc.getElementById("gl-mr-security");
+    if (host) host.remove();
+    const rail = doc.getElementById("gl-mr-rail");
+    if (rail && !rail.querySelector("#gl-mr-pipelines")) rail.remove();
   }
 
   function applyVulns(doc) {
@@ -578,7 +720,9 @@
     const found = parseDependabotDocument(doc, repo);
     if (found.length) remember(key, (memory[key] || []).concat(found));
     hydrate(key);
-    paint(doc, (memory[key] || []).filter((alert) => alert.state !== "closed"));
+    const open = (memory[key] || []).filter((alert) => alert.state !== "closed");
+    paint(doc, open);
+    renderMrSecurity(doc, repo, open);
     if (!found.length) scheduleFetch(key, repo);
   }
 

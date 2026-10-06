@@ -15,6 +15,7 @@
       function assert(condition, message) {
         if (!condition) failures.push(message);
       }
+      try {
 
       assert(GitLabLook.parseStatus("completed successfully: ") === "success", "success status");
       assert(GitLabLook.parseStatus("failed: ") === "failed", "failed status");
@@ -32,7 +33,13 @@
       assert(staged.map((stage) => stage.name).join(",") === "build,test,deploy", "stage names: " + staged.map((stage) => stage.name).join(","));
       assert(staged[1].status === "failed", "test stage worst status");
       assert(staged[1].jobs.length === 2, "matrix jobs share a stage");
-      assert(staged[2].status === "running", "deploy stage status");
+      assert(GitLabLook.groupJobsByStage([
+        { name: "build (ubuntu-latest)", status: "success" },
+        { name: "build (windows-latest)", status: "failed" },
+        { name: "integration-tests (ubuntu-latest)", status: "success" },
+        { name: "check-requirements / lint", status: "success" },
+      ]).map((stage) => stage.name + ":" + stage.jobs.length + ":" + stage.status).join(",") ===
+        "build:2:failed,integration-tests:1:success,check-requirements:1:success", "named stages");
       assert(GitLabLook.versionInRange("4.17.20", "< 4.17.21"), "vulnerable version in range");
       assert(!GitLabLook.versionInRange("4.17.21", "< 4.17.21"), "patched version outside range");
       assert(GitLabLook.fileMatchesManifest("package.json", "package.json"), "manifest matches itself");
@@ -180,6 +187,61 @@
       assert(jobBar.querySelector("a").getAttribute("href") === "/acme/widgets/actions/runs/42", "pipeline href");
       assert(document.querySelector(".js-check-step").textContent === "Set up job", "log text kept");
 
+      document.body.dataset.glPath = "/acme/widgets/pull/7/checks";
+      document.body.dataset.glSearch = "?check_run_id=11";
+      document.body.innerHTML = [
+        '<nav><a href="/acme/widgets/pull/7/checks">Checks</a></nav>',
+        '<div class="d-flex">',
+        '<aside class="js-check-suites-sidebar" aria-label="Check suites">',
+        '<details class="checks-list-item" open>',
+        '<summary><a href="/acme/widgets/actions/runs/99"><span>Unit and Integration Tests</span><span>on: pull_request</span></a></summary>',
+        '<div class="checks-list-item"><span class="checks-list-item-icon"><svg aria-label="This job succeeded" class="octicon-check color-fg-success"></svg></span>',
+        '<a href="/acme/widgets/actions/runs/99/job/10?pr=7"><span>build (ubuntu-latest)</span></a></div>',
+        '<div class="checks-list-item"><span class="checks-list-item-icon"><svg aria-label="This job failed" class="octicon-x color-fg-danger"></svg></span>',
+        '<a href="/acme/widgets/actions/runs/99/job/11?pr=7"><span>build (windows-latest)</span></a></div>',
+        '<div class="checks-list-item"><span class="checks-list-item-icon"><svg aria-label="This job succeeded" class="octicon-check color-fg-success"></svg></span>',
+        '<a href="/acme/widgets/actions/runs/99/job/12?pr=7"><span>integration-tests (ubuntu-latest)</span></a></div>',
+        "</details>",
+        '<details class="checks-list-item" open>',
+        '<summary><a href="/acme/widgets/actions/runs/100"><span>PR Triaging</span></a></summary>',
+        '<div class="checks-list-item"><span class="checks-list-item-icon"><svg aria-label="This job succeeded" class="octicon-check color-fg-success"></svg></span>',
+        '<a href="/acme/widgets/actions/runs/100/job/20?pr=7"><span>label-external / label_issues</span></a></div>',
+        '<div class="checks-list-item"><span class="checks-list-item-icon"><svg aria-label="This job succeeded" class="octicon-check color-fg-success"></svg></span>',
+        '<a href="/acme/widgets/actions/runs/100/job/21?pr=7"><span>ready-for-review</span></a></div>',
+        "</details>",
+        "</aside>",
+        '<div class="js-check-steps"><svg aria-label="failed: "></svg><div class="js-check-step">Run tests</div></div>',
+        "</div>",
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const pipelines = document.querySelectorAll(".gl-mr-pipeline");
+      assert(pipelines.length === 2, "check tab pipelines: " + pipelines.length);
+      assert(document.querySelector(".gl-mr-pipelines-title").textContent === "Pipelines", "pipelines heading");
+      assert(document.querySelector('a[href="/acme/widgets/pull/7/checks"]').textContent.trim() === "Pipelines", "checks tab relabel");
+      assert(document.getElementById("gl-mr-rail").lastElementChild.id === "gl-mr-pipelines", "pipelines on the right");
+      assert(!document.querySelector(".js-check-suites-sidebar").classList.contains("gl-native-checks-hidden"), "native checks kept");
+      assert(document.getElementById("gl-security-tab").textContent.trim() === "Security", "security tab");
+      const firstCard = pipelines[0];
+      assert(firstCard.querySelector(".gl-pipeline-badge").textContent === "failed", "suite worst status");
+      assert(firstCard.querySelector(".gl-pipeline-id").textContent === "#99", "suite pipeline id");
+      assert(firstCard.querySelector(".gl-pipeline-subject").textContent === "Unit and Integration Tests", "suite name");
+      const stageLabels = [...firstCard.querySelectorAll(".gl-mini-label")].map((node) => node.textContent);
+      assert(stageLabels.join(",") === "build,integration-tests", "check tab stages: " + stageLabels.join(","));
+      assert(firstCard.querySelector(".gl-mini-stage.is-open .gl-mini-label").textContent === "build", "failed stage open");
+      assert(firstCard.querySelector(".gl-job-pill[aria-current='page'] .gl-job-name").textContent === "build (windows-latest)", "selected job");
+      assert(document.getElementById("gl-job-bar").textContent.indexOf("build (windows-latest)") > -1, "checks job bar name");
+      assert(document.getElementById("gl-job-bar").querySelector("a").textContent === "Pipeline #99", "checks job bar pipeline");
+      firstCard.querySelector('.gl-mini-stage[data-stage="integration-tests"]').click();
+      assert(firstCard.querySelector(".gl-mini-stage.is-open .gl-mini-label").textContent === "integration-tests", "stage click");
+      assert(firstCard.querySelector(".gl-job-name").textContent === "integration-tests (ubuntu-latest)", "stage jobs");
+      const secondStages = [...pipelines[1].querySelectorAll(".gl-mini-label")].map((node) => node.textContent);
+      assert(secondStages.join(",") === "label-external,ready-for-review", "slash and plain stages: " + secondStages.join(","));
+      GitLabLook.render(document, { enabled: false, commentOrder: "asc" });
+      assert(!document.getElementById("gl-mr-pipelines"), "checks overlay removed");
+      assert(document.querySelector('a[href="/acme/widgets/pull/7/checks"]').textContent.trim() === "Checks", "checks tab restored");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      document.body.dataset.glSearch = "";
+
       document.body.dataset.glPath = "/acme/widgets/pull/7";
       document.title = "Add widget by octocat · Pull Request #7 · acme/widgets · GitHub";
       document.body.innerHTML = [
@@ -244,6 +306,28 @@
       assert(parsed[0].package === "lodash" && parsed[0].severity === "high" && parsed[0].state === "open", "open lodash alert");
       assert(parsed[1].state === "closed", "dismissed alert closed");
 
+      document.body.dataset.glPath = "/acme/widgets/pull/7";
+      document.body.dataset.glHash = "";
+      document.body.innerHTML = [
+        '<nav><a href="/acme/widgets/pull/7">Conversation</a><a href="/acme/widgets/pull/7/checks">Checks</a></nav>',
+        '<div id="partial-discussion-sidebar"><div class="discussion-sidebar-item">Reviewers</div></div>',
+        '<div class="js-discussion"><div class="js-comment-body">Use lodash in widgets</div></div>',
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const security = document.getElementById("gl-mr-security");
+      assert(security, "merge request security console");
+      assert(document.getElementById("partial-discussion-sidebar").firstElementChild.id === "gl-mr-security", "security in the right sidebar");
+      assert(security.querySelector(".gl-vuln").textContent === "lodash", "dependabot package highlighted");
+      assert(security.querySelector(".gl-severity-high").textContent === "high", "finding severity");
+      assert(security.textContent.indexOf("package.json") > -1, "finding manifest");
+      assert(document.getElementById("gl-security-tab").textContent.trim() === "Security", "security tab on conversation");
+      assert(!security.classList.contains("is-expanded"), "overview console is compact");
+      document.body.dataset.glHash = "#gl-security";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.getElementById("gl-mr-security").classList.contains("is-expanded"), "security tab expands console");
+      assert(document.getElementById("gl-security-tab").getAttribute("aria-current") === "page", "security tab current");
+      document.body.dataset.glHash = "";
+
       document.body.dataset.glFile = "package.json";
       document.body.dataset.glPath = "/acme/widgets/blob/main/package.json";
       document.body.innerHTML = [
@@ -293,6 +377,9 @@
       assert(!document.getElementById("gl-sidebar"), "sidebar removed");
       assert(document.querySelector("h1").textContent === "Pull requests", "heading restored");
       assert(document.title === "Pull requests · acme/widgets · GitHub", "title restored: " + document.title);
+      } catch (error) {
+        failures.push("exception: " + (error && error.stack ? error.stack : error));
+      }
 
       document.documentElement.dataset.result = failures.length ? "fail" : "pass";
       document.body.innerHTML = '<pre id="out"></pre>';

@@ -28,6 +28,18 @@
     return (view && view.location && view.location.pathname) || "";
   }
 
+  function pageHash(doc) {
+    if (doc.body && doc.body.dataset.glHash !== undefined) return doc.body.dataset.glHash;
+    const view = doc.defaultView;
+    return (view && view.location && view.location.hash) || "";
+  }
+
+  function pageSearch(doc) {
+    if (doc.body && doc.body.dataset.glSearch !== undefined) return doc.body.dataset.glSearch;
+    const view = doc.defaultView;
+    return (view && view.location && view.location.search) || "";
+  }
+
   function parseStatus(label) {
     const value = String(label || "").toLowerCase();
     if (/fail/.test(value)) return "failed";
@@ -70,12 +82,35 @@
     return first;
   }
 
+  function stageKey(name) {
+    const value = normalizeName(name);
+    const slash = value.split(" / ");
+    if (slash.length >= 2 && slash[0]) return slash[0];
+    const matrix = value.match(/^(.*) \(/);
+    if (matrix && matrix[1]) return matrix[1];
+    return value;
+  }
+
   function stageName(jobs, index) {
     const names = jobs.map((job) => job.name).filter(Boolean);
     const prefix = sharedPrefix(names);
     if (prefix) return prefix;
     if (names.length === 1) return names[0];
     return "Stage " + (index + 1);
+  }
+
+  function groupJobsByStage(jobs) {
+    const columns = new Map();
+    jobs.forEach((job) => {
+      const key = stageKey(job.name) || job.name || "Job";
+      if (!columns.has(key)) columns.set(key, []);
+      columns.get(key).push(job);
+    });
+    return [...columns.entries()].map(([name, group]) => ({
+      name,
+      status: worstStatus(group),
+      jobs: group,
+    }));
   }
 
   function groupIntoStages(jobs) {
@@ -371,12 +406,331 @@
     }
   }
 
-  function renderJob(doc, path) {
+  function checksTabLinks(doc) {
+    return [...doc.querySelectorAll("a[href]")].filter((node) => {
+      const href = node.getAttribute("href") || "";
+      return /\/pull\/\d+\/checks(\?|$)/.test(href);
+    });
+  }
+
+  function replaceTextWord(root, from, to) {
+    const walk = root.ownerDocument.createTreeWalker(root, NodeFilter.SHOW_TEXT);
+    let node;
+    while ((node = walk.nextNode())) {
+      if (node.textContent.indexOf(from) > -1) node.textContent = node.textContent.replace(from, to);
+    }
+  }
+
+  function relabelChecksTab(doc) {
+    checksTabLinks(doc).forEach((node) => {
+      if (node.textContent.indexOf("Checks") === -1) return;
+      if (!node.dataset.glOriginal) node.dataset.glOriginal = "Checks";
+      replaceTextWord(node, "Checks", "Pipelines");
+    });
+  }
+
+  function restoreChecksTab(doc) {
+    checksTabLinks(doc).forEach((node) => {
+      if (node.dataset.glOriginal !== "Checks") return;
+      replaceTextWord(node, "Pipelines", "Checks");
+      delete node.dataset.glOriginal;
+    });
+  }
+
+  function workflowTitleFrom(link) {
+    const named = link && link.querySelector("span");
+    const raw = named ? named.textContent : link ? link.textContent : "";
+    return normalizeName(raw.replace(/\bon:\s+\S+\s*$/i, ""));
+  }
+
+  function extractCheckJobs(suite) {
+    const jobs = [];
+    suite.querySelectorAll("a[href*='/actions/runs/'][href*='/job/']").forEach((link) => {
+      const item = link.closest(".checks-list-item, li, div") || link;
+      jobs.push({
+        id: link.getAttribute("href") || jobNameFrom(item),
+        name: normalizeName(link.textContent),
+        status: statusFrom(item),
+        href: link.getAttribute("href") || "",
+        duration: durationFrom(item),
+        needs: [],
+        column: 0,
+      });
+    });
+    return jobs.filter((job) => job.name);
+  }
+
+  function extractCheckSuites(doc) {
+    const suites = [];
+    const nodes = doc.querySelectorAll(
+      "details.checks-list-item, details[id^='sidebar_check_suite_'], .js-check-suites-sidebar details"
+    );
+    nodes.forEach((node) => {
+      const runLink = [...node.querySelectorAll("a[href*='/actions/runs/']")].find(
+        (link) => !/\/job\//.test(link.getAttribute("href") || "")
+      );
+      if (!runLink) return;
+      const href = runLink.getAttribute("href") || "";
+      const jobs = extractCheckJobs(node);
+      suites.push({
+        node,
+        name: workflowTitleFrom(runLink),
+        href,
+        runId: runIdFromHref(href),
+        jobs,
+        status: jobs.length ? worstStatus(jobs) : statusFrom(node),
+      });
+    });
+    return suites;
+  }
+
+  function pullRoot(path) {
+    const match = String(path || "").match(/^(\/[^/]+\/[^/]+\/pull\/\d+)/);
+    return match ? match[1] : "";
+  }
+
+  function isSecurityView(doc) {
+    return pageHash(doc) === "#gl-security";
+  }
+
+  function ensureSecurityTab(doc, path) {
+    const root = pullRoot(path);
+    if (!root) return;
+    const checks = checksTabLinks(doc)[0];
+    if (!checks || !checks.parentElement) return;
+    let tab = doc.getElementById("gl-security-tab");
+    if (!tab) {
+      tab = doc.createElement("a");
+      tab.id = "gl-security-tab";
+      tab.className = checks.className;
+      tab.textContent = "Security";
+      tab.addEventListener("click", (event) => {
+        const current = pagePath(doc);
+        if (current === root || current === root + "/") {
+          event.preventDefault();
+          if (doc.body) doc.body.dataset.glHash = "#gl-security";
+          const view = doc.defaultView;
+          if (view && view.history && view.location) view.history.replaceState(view.history.state, "", tab.href);
+          if (GL.requestRender) GL.requestRender();
+        }
+      });
+      checks.parentElement.insertBefore(tab, checks.nextSibling);
+    }
+    tab.href = root + "#gl-security";
+    if (isSecurityView(doc)) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
+  }
+
+  function showNativeChecks(doc) {
+    doc.querySelectorAll(".js-check-suites-sidebar").forEach((node) => {
+      node.classList.remove("gl-native-checks-hidden");
+    });
+  }
+
+  function ensureMrRail(doc) {
+    const sidebar = doc.querySelector(".js-check-suites-sidebar");
+    if (!sidebar || !sidebar.parentElement) return null;
+    let rail = doc.getElementById("gl-mr-rail");
+    if (!rail) {
+      rail = doc.createElement("div");
+      rail.id = "gl-mr-rail";
+      rail.className = "gl-mr-rail";
+      rail.setAttribute("aria-label", "Merge request consoles");
+    }
+    sidebar.parentElement.appendChild(rail);
+    return rail;
+  }
+
+  function fillJobPill(doc, pill, job) {
+    pill.className = "gl-job-pill";
+    pill.href = job.href || "#";
+    if (job.selected) pill.setAttribute("aria-current", "page");
+    else pill.removeAttribute("aria-current");
+    pill.replaceChildren();
+    const dot = doc.createElement("span");
+    dot.className = "gl-status-dot gl-status-dot-" + job.status;
+    const name = doc.createElement("span");
+    name.className = "gl-job-name";
+    name.textContent = job.name;
+    pill.append(dot, name);
+    if (job.duration) {
+      const duration = doc.createElement("span");
+      duration.className = "gl-job-duration";
+      duration.textContent = job.duration;
+      pill.appendChild(duration);
+    }
+  }
+
+  function renderStageJobs(doc, host, stages, openName) {
+    host.replaceChildren();
+    const stage = stages.find((item) => item.name === openName) || stages[0];
+    if (!stage) return;
+    stage.jobs.forEach((job) => {
+      const pill = doc.createElement("a");
+      fillJobPill(doc, pill, job);
+      host.appendChild(pill);
+    });
+  }
+
+  function renderMiniGraph(doc, stages, openName, onOpen) {
+    const graph = doc.createElement("div");
+    graph.className = "gl-mini-graph";
+    graph.setAttribute("role", "list");
+    graph.setAttribute("aria-label", "Pipeline stages");
+    stages.forEach((stage, index) => {
+      if (index) {
+        const line = doc.createElement("span");
+        line.className = "gl-mini-line";
+        line.setAttribute("aria-hidden", "true");
+        graph.appendChild(line);
+      }
+      const button = doc.createElement("button");
+      button.type = "button";
+      button.className = "gl-mini-stage" + (stage.name === openName ? " is-open" : "");
+      button.dataset.stage = stage.name;
+      button.setAttribute("role", "listitem");
+      button.setAttribute("aria-pressed", stage.name === openName ? "true" : "false");
+      button.setAttribute("aria-label", stage.name + " " + statusLabel(stage.status));
+      button.title = stage.name + " · " + statusLabel(stage.status);
+      const node = doc.createElement("span");
+      node.className = "gl-mini-node gl-status-dot-" + stage.status;
+      const label = doc.createElement("span");
+      label.className = "gl-mini-label";
+      label.textContent = stage.name;
+      button.append(node, label);
+      button.addEventListener("click", () => onOpen(stage.name));
+      graph.appendChild(button);
+    });
+    return graph;
+  }
+
+  function renderPipelineCard(doc, suite, selectedHref) {
+    const jobs = suite.jobs.map((job) =>
+      Object.assign({}, job, {
+        selected: Boolean(selectedHref && job.href && job.href.split("?")[0] === selectedHref.split("?")[0]),
+      })
+    );
+    const stages = groupJobsByStage(jobs);
+    const failed = stages.find((stage) => stage.status === "failed");
+    const running = stages.find((stage) => stage.status === "running" || stage.status === "pending" || stage.status === "waiting");
+    const selectedStage = stages.find((stage) => stage.jobs.some((job) => job.selected));
+    let openName = (selectedStage || failed || running || stages[0] || {}).name || "";
+    const card = doc.createElement("article");
+    card.className = "gl-mr-pipeline";
+    const leading = doc.createElement("div");
+    leading.className = "gl-pipeline-leading";
+    const badge = doc.createElement("span");
+    badge.className = "gl-pipeline-badge gl-status gl-status-" + suite.status;
+    badge.textContent = statusLabel(suite.status);
+    const idLink = doc.createElement("a");
+    idLink.className = "gl-pipeline-id";
+    idLink.href = suite.href;
+    idLink.textContent = "#" + suite.runId;
+    const title = doc.createElement("a");
+    title.className = "gl-pipeline-subject";
+    title.href = suite.href;
+    title.textContent = suite.name;
+    leading.append(badge, idLink, title);
+    const jobsHost = doc.createElement("div");
+    jobsHost.className = "gl-mini-jobs";
+    const open = (name) => {
+      openName = name;
+      card.querySelectorAll(".gl-mini-stage").forEach((button) => {
+        const active = button.dataset.stage === openName;
+        button.classList.toggle("is-open", active);
+        button.setAttribute("aria-pressed", active ? "true" : "false");
+      });
+      renderStageJobs(doc, jobsHost, stages, openName);
+    };
+    card.append(leading, renderMiniGraph(doc, stages, openName, open), jobsHost);
+    renderStageJobs(doc, jobsHost, stages, openName);
+    return card;
+  }
+
+  function selectedCheckHref(doc, suites) {
+    const params = new URLSearchParams(pageSearch(doc).replace(/^\?/, ""));
+    const checkRunId = params.get("check_run_id");
+    const jobs = suites.flatMap((suite) => suite.jobs);
+    if (checkRunId) {
+      const token = "/job/" + checkRunId;
+      const match = jobs.find((job) => {
+        const href = (job.href || "").split("?")[0];
+        return href.endsWith(token) || href.indexOf(token + "/") > -1;
+      });
+      if (match) return match.href;
+    }
+    const selected = doc.querySelector(
+      ".js-check-suites-sidebar a[aria-current='page'], .js-check-suites-sidebar a.selected, .js-check-suites-sidebar .selected a[href*='/job/']"
+    );
+    if (selected) return selected.getAttribute("href") || "";
+    return "";
+  }
+
+  function renderChecksJobBar(doc, path, suites) {
+    const href = selectedCheckHref(doc, suites);
+    const jobs = suites.flatMap((suite) => suite.jobs.map((job) => Object.assign({ runId: suite.runId }, job)));
+    const job = jobs.find((item) => item.href && href && item.href.split("?")[0] === href.split("?")[0]);
+    if (/\/actions\/runs\/\d+\/job\/\d+/.test(path)) {
+      renderJob(doc, path);
+      return;
+    }
+    if (!job) {
+      const bar = doc.getElementById("gl-job-bar");
+      if (bar) bar.remove();
+      return;
+    }
+    renderJob(doc, job.href.split("?")[0], job);
+  }
+
+  function renderChecks(doc, path) {
+    relabelChecksTab(doc);
+    const suites = extractCheckSuites(doc);
+    if (!suites.length) {
+      relabelChecksTab(doc);
+      return;
+    }
+    const selected = selectedCheckHref(doc, suites);
+    const signature =
+      suites
+        .map((suite) => suite.runId + ":" + suite.status + ":" + suite.jobs.map((job) => job.id + ":" + job.status).join(","))
+        .join("|") +
+      "|" +
+      selected;
+    let host = doc.getElementById("gl-mr-pipelines");
+    if (host && host.dataset.signature === signature) {
+      showNativeChecks(doc);
+      renderChecksJobBar(doc, path, suites);
+      return;
+    }
+    if (!host) {
+      host = doc.createElement("div");
+      host.id = "gl-mr-pipelines";
+      host.className = "gl-mr-pipelines gl-mr-console gl-mr-console-right";
+    } else {
+      host.classList.add("gl-mr-console", "gl-mr-console-right");
+    }
+    const rail = ensureMrRail(doc);
+    if (rail) rail.appendChild(host);
+    else if (!host.parentElement && doc.body) doc.body.appendChild(host);
+    host.dataset.signature = signature;
+    host.replaceChildren();
+    const heading = doc.createElement("h2");
+    heading.className = "gl-mr-pipelines-title";
+    heading.textContent = "Pipelines";
+    host.appendChild(heading);
+    suites.forEach((suite) => host.appendChild(renderPipelineCard(doc, suite, selected)));
+    showNativeChecks(doc);
+    renderChecksJobBar(doc, path, suites);
+  }
+
+  function renderJob(doc, path, preset) {
     const match = path.match(/\/actions\/runs\/(\d+)\/job\/(\d+)/);
     if (!match) return;
-    const nameNode = doc.querySelector("#check-step-header-title, h1");
-    const name = normalizeName(nameNode ? nameNode.textContent : "Job");
-    const status = statusFrom(doc.querySelector(".js-check-steps, .CheckRun, body") || doc.body);
+    const nameNode = doc.querySelector("#check-step-header-title");
+    const heading = !preset ? doc.querySelector("h1") : null;
+    const name = normalizeName((preset && preset.name) || (nameNode && nameNode.textContent) || (heading && heading.textContent) || "Job");
+    const status =
+      (preset && preset.status) || statusFrom(doc.querySelector(".js-check-steps, .CheckRun, body") || doc.body);
     const signature = status + "|" + name + "|" + match[1];
     let bar = doc.getElementById("gl-job-bar");
     if (bar && bar.dataset.signature === signature) return;
@@ -384,9 +738,19 @@
       bar = doc.createElement("div");
       bar.id = "gl-job-bar";
       bar.className = "gl-job-bar";
-      const logs = doc.querySelector("#logs, .js-check-steps");
+      const logs = doc.querySelector("#logs, .js-check-steps, #check-step-header-title");
       if (logs && logs.parentElement) logs.parentElement.insertBefore(bar, logs);
-      else if (doc.body) doc.body.insertBefore(bar, doc.body.firstChild);
+      else {
+        const host = doc.getElementById("gl-mr-pipelines");
+        const main =
+          host &&
+          host.parentElement &&
+          [...host.parentElement.children].find(
+            (node) => node !== host && node.id !== "gl-job-bar" && !node.classList.contains("js-check-suites-sidebar")
+          );
+        if (main) main.insertBefore(bar, main.firstChild);
+        else if (doc.body) doc.body.insertBefore(bar, doc.body.firstChild);
+      }
     }
     bar.dataset.signature = signature;
     bar.replaceChildren();
@@ -404,9 +768,15 @@
   function clearPipeline(doc) {
     const graph = doc.getElementById("gl-pipeline-graph");
     if (graph) graph.remove();
+    const pipelines = doc.getElementById("gl-mr-pipelines");
+    if (pipelines) pipelines.remove();
+    const rail = doc.getElementById("gl-mr-rail");
+    if (rail && !rail.querySelector("#gl-mr-security")) rail.remove();
     const bar = doc.getElementById("gl-job-bar");
     if (bar) bar.remove();
     showNativeGraph(doc);
+    showNativeChecks(doc);
+    restoreChecksTab(doc);
     doc.querySelectorAll(".gl-pipeline-badge, .gl-pipeline-id, .gl-pipeline-meta, .gl-pipeline-leading").forEach((node) => node.remove());
     doc.querySelectorAll(".gl-pipeline-row").forEach((row) => {
       row.classList.remove("gl-pipeline-row");
@@ -421,8 +791,30 @@
 
   function applyPipeline(doc) {
     const path = pagePath(doc);
+    if (/\/pull\/\d+/.test(path)) {
+      relabelChecksTab(doc);
+      ensureSecurityTab(doc, path);
+    } else {
+      const tab = doc.getElementById("gl-security-tab");
+      if (tab) tab.remove();
+    }
+    if (/\/pull\/\d+\/checks(\/|$)/.test(path)) {
+      const graph = doc.getElementById("gl-pipeline-graph");
+      if (graph) graph.remove();
+      showNativeGraph(doc);
+      renderChecks(doc, path);
+      ensureSecurityTab(doc, path);
+      return;
+    }
+    const pipelines = doc.getElementById("gl-mr-pipelines");
+    if (pipelines) pipelines.remove();
+    showNativeChecks(doc);
     if (!/\/actions(\/|$)/.test(path)) {
       clearPipeline(doc);
+      if (/\/pull\/\d+/.test(path)) {
+        relabelChecksTab(doc);
+        ensureSecurityTab(doc, path);
+      }
       return;
     }
     if (/\/actions\/runs\/\d+\/job\/\d+/.test(path)) {
@@ -448,9 +840,13 @@
 
   GL.parseStatus = parseStatus;
   GL.groupIntoStages = groupIntoStages;
+  GL.groupJobsByStage = groupJobsByStage;
   GL.topologicalColumns = topologicalColumns;
   GL.extractJobs = extractJobs;
+  GL.extractCheckSuites = extractCheckSuites;
   GL.applyPipeline = applyPipeline;
   GL.clearPipeline = clearPipeline;
   GL.pagePath = pagePath;
+  GL.pageHash = pageHash;
+  GL.ensureMrRail = ensureMrRail;
 })();
