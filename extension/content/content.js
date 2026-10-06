@@ -109,7 +109,17 @@
 
   function hasWiki(doc, repo) {
     return Boolean(
-      doc.querySelector("#wiki-tab, a[href='/" + repo.owner + "/" + repo.repo + "/wiki'], a[href^='/" + repo.owner + "/" + repo.repo + "/wiki/']")
+      doc.querySelector(
+        "#wiki-tab, a[data-tab-item='wiki'], a[href='/" +
+          repo.owner +
+          "/" +
+          repo.repo +
+          "/wiki'], a[href^='/" +
+          repo.owner +
+          "/" +
+          repo.repo +
+          "/wiki/']"
+      )
     );
   }
 
