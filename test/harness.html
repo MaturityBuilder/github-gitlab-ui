@@ -15,6 +15,7 @@
       function assert(condition, message) {
         if (!condition) failures.push(message);
       }
+      try {
 
       assert(GitLabLook.parseStatus("completed successfully: ") === "success", "success status");
       assert(GitLabLook.parseStatus("failed: ") === "failed", "failed status");
@@ -376,6 +377,9 @@
       assert(!document.getElementById("gl-sidebar"), "sidebar removed");
       assert(document.querySelector("h1").textContent === "Pull requests", "heading restored");
       assert(document.title === "Pull requests · acme/widgets · GitHub", "title restored: " + document.title);
+      } catch (error) {
+        failures.push("exception: " + (error && error.stack ? error.stack : error));
+      }
 
       document.documentElement.dataset.result = failures.length ? "fail" : "pass";
       document.body.innerHTML = '<pre id="out"></pre>';

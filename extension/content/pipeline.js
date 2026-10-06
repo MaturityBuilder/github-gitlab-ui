@@ -34,6 +34,12 @@
     return (view && view.location && view.location.hash) || "";
   }
 
+  function pageSearch(doc) {
+    if (doc.body && doc.body.dataset.glSearch !== undefined) return doc.body.dataset.glSearch;
+    const view = doc.defaultView;
+    return (view && view.location && view.location.search) || "";
+  }
+
   function parseStatus(label) {
     const value = String(label || "").toLowerCase();
     if (/fail/.test(value)) return "failed";
