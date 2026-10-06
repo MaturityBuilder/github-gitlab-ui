@@ -429,8 +429,7 @@ html.gl-look .gl-actions-sidebar .ActionListItem-label {
 }
 
 html.gl-look action-graph.gl-native-graph-hidden,
-html.gl-look .WorkflowGraph.gl-native-graph-hidden,
-html.gl-look .js-check-suites-sidebar.gl-native-checks-hidden {
+html.gl-look .WorkflowGraph.gl-native-graph-hidden {
   display: none !important;
 }
 
@@ -527,7 +526,8 @@ html.gl-look .gl-job-bar a {
   margin-left: auto;
 }
 
-html.gl-look .gl-mr-pipelines {
+html.gl-look .gl-mr-pipelines,
+html.gl-look .gl-mr-console-right {
   flex: 0 0 320px;
   width: 320px;
   max-width: 100%;
@@ -535,7 +535,7 @@ html.gl-look .gl-mr-pipelines {
   overflow: auto;
   padding: 12px;
   background: var(--gl-surface);
-  border-right: 1px solid var(--gl-border);
+  border-left: 1px solid var(--gl-border);
 }
 
 html.gl-look .gl-mr-pipelines-title {
@@ -645,6 +645,89 @@ html.gl-look .gl-job-pill[aria-current="page"] {
   50% {
     opacity: 0.45;
   }
+}
+
+html.gl-look .gl-mr-security {
+  padding: 12px;
+  background: var(--gl-surface);
+}
+
+html.gl-look #partial-discussion-sidebar .gl-mr-security {
+  width: auto;
+  flex: none;
+  border: 1px solid var(--gl-border);
+  border-radius: 8px;
+  margin: 0 0 16px;
+}
+
+html.gl-look .gl-mr-security-title,
+html.gl-look .gl-mr-pipelines-title {
+  margin: 0 0 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gl-heading);
+}
+
+html.gl-look .gl-mr-security-summary {
+  margin: 0 0 10px;
+  color: var(--gl-muted);
+  font-size: 12px;
+}
+
+html.gl-look .gl-security-finding {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  margin-top: 8px;
+  padding: 8px;
+  border: 1px solid var(--gl-border);
+  border-radius: 6px;
+  background: var(--gl-canvas);
+  color: var(--gl-text);
+  text-decoration: none;
+}
+
+html.gl-look .gl-security-finding:hover {
+  border-color: var(--gl-blue);
+}
+
+html.gl-look .gl-security-finding-meta {
+  flex: 1 1 100%;
+  color: var(--gl-muted);
+  font-size: 12px;
+}
+
+html.gl-look .gl-mr-security-more {
+  display: inline-block;
+  margin-top: 10px;
+  color: var(--gl-blue);
+  font-size: 12px;
+}
+
+html.gl-look .gl-severity-critical,
+html.gl-look .gl-severity-high {
+  color: var(--gl-failed);
+  background: #fbeae5;
+  border-color: #f5c6bd;
+}
+
+html.gl-look .gl-severity-medium {
+  color: var(--gl-pending);
+  background: #fdf1dd;
+  border-color: #f5d9a8;
+}
+
+html.gl-look .gl-severity-low {
+  color: var(--gl-running);
+  background: #e9f3fc;
+  border-color: #c6ddf6;
+}
+
+html.gl-look .gl-severity-unknown {
+  color: var(--gl-skipped);
+  background: #f6f5f8;
+  border-color: var(--gl-border);
 }
 
 html.gl-look .js-check-step,

@@ -28,10 +28,10 @@
     return (view && view.location && view.location.pathname) || "";
   }
 
-  function pageSearch(doc) {
-    if (doc.body && doc.body.dataset.glSearch !== undefined) return doc.body.dataset.glSearch;
+  function pageHash(doc) {
+    if (doc.body && doc.body.dataset.glHash !== undefined) return doc.body.dataset.glHash;
     const view = doc.defaultView;
-    return (view && view.location && view.location.search) || "";
+    return (view && view.location && view.location.hash) || "";
   }
 
   function parseStatus(label) {
@@ -478,10 +478,41 @@
     return suites;
   }
 
-  function hideNativeChecks(doc) {
-    doc.querySelectorAll(".js-check-suites-sidebar").forEach((node) => {
-      node.classList.add("gl-native-checks-hidden");
-    });
+  function pullRoot(path) {
+    const match = String(path || "").match(/^(\/[^/]+\/[^/]+\/pull\/\d+)/);
+    return match ? match[1] : "";
+  }
+
+  function isSecurityView(doc) {
+    return pageHash(doc) === "#gl-security";
+  }
+
+  function ensureSecurityTab(doc, path) {
+    const root = pullRoot(path);
+    if (!root) return;
+    const checks = checksTabLinks(doc)[0];
+    if (!checks || !checks.parentElement) return;
+    let tab = doc.getElementById("gl-security-tab");
+    if (!tab) {
+      tab = doc.createElement("a");
+      tab.id = "gl-security-tab";
+      tab.className = checks.className;
+      tab.textContent = "Security";
+      tab.addEventListener("click", (event) => {
+        const current = pagePath(doc);
+        if (current === root || current === root + "/") {
+          event.preventDefault();
+          if (doc.body) doc.body.dataset.glHash = "#gl-security";
+          const view = doc.defaultView;
+          if (view && view.history && view.location) view.history.replaceState(view.history.state, "", tab.href);
+          if (GL.requestRender) GL.requestRender();
+        }
+      });
+      checks.parentElement.insertBefore(tab, checks.nextSibling);
+    }
+    tab.href = root + "#gl-security";
+    if (isSecurityView(doc)) tab.setAttribute("aria-current", "page");
+    else tab.removeAttribute("aria-current");
   }
 
   function showNativeChecks(doc) {
@@ -647,18 +678,20 @@
       selected;
     let host = doc.getElementById("gl-mr-pipelines");
     if (host && host.dataset.signature === signature) {
-      hideNativeChecks(doc);
+      showNativeChecks(doc);
       renderChecksJobBar(doc, path, suites);
       return;
     }
     if (!host) {
       host = doc.createElement("div");
       host.id = "gl-mr-pipelines";
-      host.className = "gl-mr-pipelines";
-      const sidebar = doc.querySelector(".js-check-suites-sidebar");
-      if (sidebar && sidebar.parentElement) sidebar.parentElement.insertBefore(host, sidebar);
-      else if (doc.body) doc.body.appendChild(host);
+      host.className = "gl-mr-pipelines gl-mr-console gl-mr-console-right";
+    } else {
+      host.classList.add("gl-mr-console", "gl-mr-console-right");
     }
+    const sidebar = doc.querySelector(".js-check-suites-sidebar");
+    if (sidebar && sidebar.parentElement) sidebar.parentElement.appendChild(host);
+    else if (!host.parentElement && doc.body) doc.body.appendChild(host);
     host.dataset.signature = signature;
     host.replaceChildren();
     const heading = doc.createElement("h2");
@@ -666,7 +699,7 @@
     heading.textContent = "Pipelines";
     host.appendChild(heading);
     suites.forEach((suite) => host.appendChild(renderPipelineCard(doc, suite, selected)));
-    hideNativeChecks(doc);
+    showNativeChecks(doc);
     renderChecksJobBar(doc, path, suites);
   }
 
@@ -736,12 +769,19 @@
 
   function applyPipeline(doc) {
     const path = pagePath(doc);
-    if (/\/pull\/\d+/.test(path)) relabelChecksTab(doc);
+    if (/\/pull\/\d+/.test(path)) {
+      relabelChecksTab(doc);
+      ensureSecurityTab(doc, path);
+    } else {
+      const tab = doc.getElementById("gl-security-tab");
+      if (tab) tab.remove();
+    }
     if (/\/pull\/\d+\/checks(\/|$)/.test(path)) {
       const graph = doc.getElementById("gl-pipeline-graph");
       if (graph) graph.remove();
       showNativeGraph(doc);
       renderChecks(doc, path);
+      ensureSecurityTab(doc, path);
       return;
     }
     const pipelines = doc.getElementById("gl-mr-pipelines");
@@ -749,7 +789,10 @@
     showNativeChecks(doc);
     if (!/\/actions(\/|$)/.test(path)) {
       clearPipeline(doc);
-      if (/\/pull\/\d+/.test(path)) relabelChecksTab(doc);
+      if (/\/pull\/\d+/.test(path)) {
+        relabelChecksTab(doc);
+        ensureSecurityTab(doc, path);
+      }
       return;
     }
     if (/\/actions\/runs\/\d+\/job\/\d+/.test(path)) {
@@ -782,4 +825,5 @@
   GL.applyPipeline = applyPipeline;
   GL.clearPipeline = clearPipeline;
   GL.pagePath = pagePath;
+  GL.pageHash = pageHash;
 })();

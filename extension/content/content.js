@@ -298,7 +298,7 @@
 
   function restoreLabels(doc) {
     doc.querySelectorAll("[data-gl-original]").forEach((node) => {
-      if (node.closest("#gl-pipeline-graph, #gl-job-bar, #gl-sidebar, #gl-mr-pipelines")) return;
+      if (node.closest("#gl-pipeline-graph, #gl-job-bar, #gl-sidebar, #gl-mr-pipelines, #gl-mr-security")) return;
       const original = node.dataset.glOriginal;
       if (original === "Pull request" || original === "Pull requests" || original === "Actions") {
         node.textContent = original;
@@ -340,6 +340,8 @@
         removeSidebar(doc);
         restoreLabels(doc);
         if (GL.clearPipeline) GL.clearPipeline(doc);
+        const securityTab = doc.getElementById("gl-security-tab");
+        if (securityTab) securityTab.remove();
         if (GL.restoreCommentOrder) GL.restoreCommentOrder(doc);
         if (GL.clearVulns) GL.clearVulns(doc);
         return;
@@ -380,6 +382,7 @@
     document.addEventListener("turbo:load", queue);
     document.addEventListener("turbo:render", queue);
     window.addEventListener("popstate", queue);
+    window.addEventListener("hashchange", queue);
     const observer = new MutationObserver(() => {
       if (!document.documentElement.classList.contains("gl-look")) return;
       queue();

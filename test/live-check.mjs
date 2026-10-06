@@ -102,20 +102,24 @@ try {
 
   const pull = await inspect(
     "https://github.com/cli/cli/pull/14583",
-    "JSON.stringify({ title: document.title, control: !!document.getElementById('gl-comment-order'), pressed: (document.querySelector('#gl-comment-order button[aria-pressed=true]') || {}).textContent || '', tab: (document.querySelector('a[href*=\"/pull/14583/checks\"]') || {}).textContent || '' })"
+    "JSON.stringify({ title: document.title, control: !!document.getElementById('gl-comment-order'), pressed: (document.querySelector('#gl-comment-order button[aria-pressed=true]') || {}).textContent || '', tab: (document.querySelector('a[href*=\"/pull/14583/checks\"]') || {}).textContent || '', securityTab: (document.getElementById('gl-security-tab') || {}).textContent || '', security: !!document.getElementById('gl-mr-security'), side: ((document.getElementById('partial-discussion-sidebar') || {}).firstElementChild || {}).id || '' })"
   );
   assert(pull.title.includes("Merge request #14583"), pull.title);
   assert(pull.control, "comment order control missing");
   assert(pull.pressed === "Oldest", `pressed: ${pull.pressed}`);
   assert(/Pipelines/.test(pull.tab), `checks tab: ${pull.tab}`);
+  assert(/Security/.test(pull.securityTab), `security tab: ${pull.securityTab}`);
+  assert(pull.security, "merge request security console missing");
+  assert(pull.side === "gl-mr-security", `security sidebar: ${pull.side}`);
 
   const checks = await inspect(
     "https://github.com/cli/cli/pull/14583/checks",
-    "JSON.stringify({ pipelines: document.querySelectorAll('.gl-mr-pipeline').length, mini: document.querySelectorAll('.gl-mini-graph').length, hidden: !!document.querySelector('.js-check-suites-sidebar.gl-native-checks-hidden'), title: (document.querySelector('.gl-mr-pipelines-title') || {}).textContent || '', stages: [...document.querySelectorAll('.gl-mini-label')].slice(0, 6).map((node) => node.textContent) })"
+    "JSON.stringify({ pipelines: document.querySelectorAll('.gl-mr-pipeline').length, mini: document.querySelectorAll('.gl-mini-graph').length, hidden: !!document.querySelector('.js-check-suites-sidebar.gl-native-checks-hidden'), right: ((document.querySelector('.js-check-suites-sidebar') || {}).parentElement || {}).lastElementChild && document.querySelector('.js-check-suites-sidebar').parentElement.lastElementChild.id, title: (document.querySelector('.gl-mr-pipelines-title') || {}).textContent || '', stages: [...document.querySelectorAll('.gl-mini-label')].slice(0, 6).map((node) => node.textContent), security: !!document.getElementById('gl-mr-security') })"
   );
   assert(checks.pipelines > 0, `no merge request pipelines: ${JSON.stringify(checks)}`);
   assert(checks.mini === checks.pipelines, `mini graphs: ${checks.mini}`);
-  assert(checks.hidden, "native checks sidebar still visible");
+  assert(!checks.hidden, "native checks sidebar hidden");
+  assert(checks.right === "gl-mr-pipelines", `pipelines column: ${checks.right}`);
   assert(checks.title === "Pipelines", `pipelines title: ${checks.title}`);
 } catch (error) {
   failures.push(error.message);

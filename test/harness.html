@@ -217,7 +217,9 @@
       assert(pipelines.length === 2, "check tab pipelines: " + pipelines.length);
       assert(document.querySelector(".gl-mr-pipelines-title").textContent === "Pipelines", "pipelines heading");
       assert(document.querySelector('a[href="/acme/widgets/pull/7/checks"]').textContent.trim() === "Pipelines", "checks tab relabel");
-      assert(document.querySelector(".js-check-suites-sidebar").classList.contains("gl-native-checks-hidden"), "native checks hidden");
+      assert(document.querySelector(".js-check-suites-sidebar").parentElement.lastElementChild.id === "gl-mr-pipelines", "pipelines on the right");
+      assert(!document.querySelector(".js-check-suites-sidebar").classList.contains("gl-native-checks-hidden"), "native checks kept");
+      assert(document.getElementById("gl-security-tab").textContent.trim() === "Security", "security tab");
       const firstCard = pipelines[0];
       assert(firstCard.querySelector(".gl-pipeline-badge").textContent === "failed", "suite worst status");
       assert(firstCard.querySelector(".gl-pipeline-id").textContent === "#99", "suite pipeline id");
@@ -235,7 +237,6 @@
       assert(secondStages.join(",") === "label-external,ready-for-review", "slash and plain stages: " + secondStages.join(","));
       GitLabLook.render(document, { enabled: false, commentOrder: "asc" });
       assert(!document.getElementById("gl-mr-pipelines"), "checks overlay removed");
-      assert(!document.querySelector(".js-check-suites-sidebar").classList.contains("gl-native-checks-hidden"), "native checks restored");
       assert(document.querySelector('a[href="/acme/widgets/pull/7/checks"]').textContent.trim() === "Checks", "checks tab restored");
       GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
       document.body.dataset.glSearch = "";
@@ -303,6 +304,28 @@
       assert(parsed.length === 2, "parsed dependabot alerts: " + parsed.length);
       assert(parsed[0].package === "lodash" && parsed[0].severity === "high" && parsed[0].state === "open", "open lodash alert");
       assert(parsed[1].state === "closed", "dismissed alert closed");
+
+      document.body.dataset.glPath = "/acme/widgets/pull/7";
+      document.body.dataset.glHash = "";
+      document.body.innerHTML = [
+        '<nav><a href="/acme/widgets/pull/7">Conversation</a><a href="/acme/widgets/pull/7/checks">Checks</a></nav>',
+        '<div id="partial-discussion-sidebar"><div class="discussion-sidebar-item">Reviewers</div></div>',
+        '<div class="js-discussion"><div class="js-comment-body">Use lodash in widgets</div></div>',
+      ].join("");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      const security = document.getElementById("gl-mr-security");
+      assert(security, "merge request security console");
+      assert(document.getElementById("partial-discussion-sidebar").firstElementChild.id === "gl-mr-security", "security in the right sidebar");
+      assert(security.querySelector(".gl-vuln").textContent === "lodash", "dependabot package highlighted");
+      assert(security.querySelector(".gl-severity-high").textContent === "high", "finding severity");
+      assert(security.textContent.indexOf("package.json") > -1, "finding manifest");
+      assert(document.getElementById("gl-security-tab").textContent.trim() === "Security", "security tab on conversation");
+      assert(!security.classList.contains("is-expanded"), "overview console is compact");
+      document.body.dataset.glHash = "#gl-security";
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc" });
+      assert(document.getElementById("gl-mr-security").classList.contains("is-expanded"), "security tab expands console");
+      assert(document.getElementById("gl-security-tab").getAttribute("aria-current") === "page", "security tab current");
+      document.body.dataset.glHash = "";
 
       document.body.dataset.glFile = "package.json";
       document.body.dataset.glPath = "/acme/widgets/blob/main/package.json";
