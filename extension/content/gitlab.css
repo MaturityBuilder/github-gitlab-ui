@@ -526,8 +526,15 @@ html.gl-look .gl-job-bar a {
   margin-left: auto;
 }
 
+html.gl-look .actions-grid-container {
+  display: grid !important;
+  grid-template-columns: minmax(200px, 280px) minmax(0, 1fr) 320px;
+  align-items: stretch;
+}
+
 html.gl-look .gl-mr-rail {
-  flex: 0 0 320px;
+  grid-column: 3;
+  grid-row: 1;
   width: 320px;
   max-width: 100%;
   align-self: stretch;
