@@ -99,32 +99,33 @@ That checks the install script flags, runs the pipeline, sidebar, and comment-or
 
 ## Releases
 
-`.github/workflows/release-please.yml` opens a release PR from [Conventional Commits](https://www.conventionalcommits.org/) on `main`. Merging that PR tags the release (`v*`), updates `CHANGELOG.md`, `version.txt`, and `extension/manifest.json`, and creates a GitHub Release.
+`.github/workflows/release-please.yml` opens a release PR from [Conventional Commits](https://www.conventionalcommits.org/) on `main`. Merging that PR tags the release (`v*`), updates `CHANGELOG.md`, `version.txt`, `package.json`, and `extension/manifest.json`, and creates a GitHub Release.
 
 Use commit prefixes such as `feat:`, `fix:`, and `feat!:` / `BREAKING CHANGE:` so Release Please can choose the next version. The current version is bootstrapped at `1.1.0` in `.release-please-manifest.json`.
 
 Optional repository secret:
 
-- `RELEASE_PLEASE_TOKEN` — a PAT or GitHub App token with permission to push tags and open PRs. Prefer this over the default `GITHUB_TOKEN` so the release tag can trigger the Chrome Web Store publish workflow. Without it, Release Please still opens the release PR and creates the tag, but other Actions workflows will not run from that tag.
+- `RELEASE_PLEASE_TOKEN` — a PAT or GitHub App token with permission to push tags and open PRs. Prefer this over the default `GITHUB_TOKEN` so the release tag can trigger the GitHub Packages publish workflow. Without it, Release Please still opens the release PR and creates the tag, but other Actions workflows will not run from that tag.
 
-## Publish to the Chrome Web Store
+## Publish to GitHub Packages
 
-`.github/workflows/chrome.yml` tests the extension and publishes it to the Chrome Web Store. The publish job runs when a `v*` tag is pushed, and when the workflow is started by hand on `main`. A tag publishes to everyone. A manual run publishes to the target you pick, trusted testers by default. Pull requests only run the test and package jobs.
+`.github/workflows/chrome.yml` tests the extension and publishes `@maturitybuilder/gitlab-look` to the GitHub Packages npm registry. The publish job runs when a `v*` tag is pushed, and when the workflow is started by hand on `main`. Pull requests only run the test and package jobs.
 
-The package job uploads the files inside `extension/`. Download the `gitlab-look` artifact from the Actions run and you get a zip with `manifest.json` at the root, which is the package the Chrome Web Store accepts. A zip of the `extension` folder itself, or a zip that only contains another zip, is rejected with "No manifest found in package."
+The published package includes the `extension/` tree and `dist/gitlab-look.zip` (with `manifest.json` at the zip root). The package job also uploads an Actions artifact named `gitlab-look` for each run.
 
-The Chrome Web Store item has to exist already, because the API updates an item by its id. Upload the zip once in the [developer dashboard](https://chrome.google.com/webstore/devconsole) and copy the item id. Each upload also has to use a higher `version` in `extension/manifest.json` than the version already on the store. Release Please keeps that version in sync when you merge its release PR.
-
-Add these repository secrets:
-
-- `CHROME_EXTENSION_ID` — the store item id
-- `CHROME_CLIENT_ID` — OAuth client id from a Google Cloud project with the Chrome Web Store API enabled
-- `CHROME_CLIENT_SECRET` — that client's secret
-- `CHROME_REFRESH_TOKEN` — a refresh token for `https://www.googleapis.com/auth/chromewebstore`
-
-The token comes from the [Chrome Web Store API](https://developer.chrome.com/docs/webstore/using-api) OAuth flow. After the secrets are set, publish by merging a Release Please PR (preferred) or by tagging by hand:
+Publish by merging a Release Please PR (preferred) or by tagging by hand:
 
 ```bash
 git tag v1.1.0
 git push origin v1.1.0
 ```
+
+Install from GitHub Packages (needs a token that can read packages for this org):
+
+```bash
+echo "@maturitybuilder:registry=https://npm.pkg.github.com" >> .npmrc
+echo "//npm.pkg.github.com/:_authToken=${GITHUB_TOKEN}" >> .npmrc
+npm install @maturitybuilder/gitlab-look@1.1.0
+```
+
+Then load `node_modules/@maturitybuilder/gitlab-look/extension` as an unpacked extension, or use the zip at `node_modules/@maturitybuilder/gitlab-look/dist/gitlab-look.zip`.

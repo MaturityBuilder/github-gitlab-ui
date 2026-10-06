@@ -1,0 +1,24 @@
+{
+  "name": "@maturitybuilder/gitlab-look",
+  "version": "1.1.0",
+  "description": "Maturity Builder GitLab Overlay skin. Focuses GitHub around security and workflow efficiency.",
+  "private": false,
+  "files": [
+    "extension/",
+    "dist/gitlab-look.zip"
+  ],
+  "scripts": {
+    "prepack": "./scripts/package-extension.sh dist/gitlab-look.zip"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/MaturityBuilder/github-gitlab-ui.git"
+  },
+  "bugs": {
+    "url": "https://github.com/MaturityBuilder/github-gitlab-ui/issues"
+  },
+  "homepage": "https://github.com/MaturityBuilder/github-gitlab-ui#readme",
+  "publishConfig": {
+    "registry": "https://npm.pkg.github.com"
+  }
+}
