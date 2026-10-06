@@ -218,7 +218,7 @@
       assert(pipelines.length === 2, "check tab pipelines: " + pipelines.length);
       assert(document.querySelector(".gl-mr-pipelines-title").textContent === "Pipelines", "pipelines heading");
       assert(document.querySelector('a[href="/acme/widgets/pull/7/checks"]').textContent.trim() === "Pipelines", "checks tab relabel");
-      assert(document.querySelector(".js-check-suites-sidebar").parentElement.lastElementChild.id === "gl-mr-pipelines", "pipelines on the right");
+      assert(document.getElementById("gl-mr-rail").lastElementChild.id === "gl-mr-pipelines", "pipelines on the right");
       assert(!document.querySelector(".js-check-suites-sidebar").classList.contains("gl-native-checks-hidden"), "native checks kept");
       assert(document.getElementById("gl-security-tab").textContent.trim() === "Security", "security tab");
       const firstCard = pipelines[0];

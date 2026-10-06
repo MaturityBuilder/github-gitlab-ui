@@ -609,9 +609,11 @@
       if (host.parentElement !== discussion) discussion.insertBefore(host, discussion.firstChild);
       return;
     }
-    const pipelines = doc.getElementById("gl-mr-pipelines");
-    if (pipelines && pipelines.parentElement) {
-      pipelines.parentElement.insertBefore(host, pipelines);
+    const rail = GL.ensureMrRail ? GL.ensureMrRail(doc) : doc.getElementById("gl-mr-rail");
+    if (rail) {
+      const pipelines = doc.getElementById("gl-mr-pipelines");
+      if (pipelines && pipelines.parentElement === rail) rail.insertBefore(host, pipelines);
+      else rail.appendChild(host);
       return;
     }
     const checks = doc.querySelector(".js-check-suites-sidebar");
@@ -703,6 +705,8 @@
     clearLineHighlights(doc);
     const host = doc.getElementById("gl-mr-security");
     if (host) host.remove();
+    const rail = doc.getElementById("gl-mr-rail");
+    if (rail && !rail.querySelector("#gl-mr-pipelines")) rail.remove();
   }
 
   function applyVulns(doc) {

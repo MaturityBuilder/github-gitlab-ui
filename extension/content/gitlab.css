@@ -526,16 +526,31 @@ html.gl-look .gl-job-bar a {
   margin-left: auto;
 }
 
-html.gl-look .gl-mr-pipelines,
-html.gl-look .gl-mr-console-right {
+html.gl-look .gl-mr-rail {
   flex: 0 0 320px;
   width: 320px;
   max-width: 100%;
   align-self: stretch;
   overflow: auto;
-  padding: 12px;
   background: var(--gl-surface);
   border-left: 1px solid var(--gl-border);
+}
+
+html.gl-look .js-check-suites-sidebar {
+  flex: 0 0 auto;
+  max-width: 280px;
+}
+
+html.gl-look .js-check-suites-sidebar ~ *:not(#gl-mr-rail):not(#gl-mr-pipelines):not(#gl-mr-security) {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+html.gl-look .gl-mr-rail .gl-mr-pipelines,
+html.gl-look .gl-mr-rail .gl-mr-security {
+  width: auto;
+  flex: none;
+  border-left: 0;
 }
 
 html.gl-look .gl-mr-pipelines-title {

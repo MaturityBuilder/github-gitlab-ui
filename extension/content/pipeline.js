@@ -527,6 +527,20 @@
     });
   }
 
+  function ensureMrRail(doc) {
+    const sidebar = doc.querySelector(".js-check-suites-sidebar");
+    if (!sidebar || !sidebar.parentElement) return null;
+    let rail = doc.getElementById("gl-mr-rail");
+    if (!rail) {
+      rail = doc.createElement("div");
+      rail.id = "gl-mr-rail";
+      rail.className = "gl-mr-rail";
+      rail.setAttribute("aria-label", "Merge request consoles");
+    }
+    sidebar.parentElement.appendChild(rail);
+    return rail;
+  }
+
   function fillJobPill(doc, pill, job) {
     pill.className = "gl-job-pill";
     pill.href = job.href || "#";
@@ -695,8 +709,8 @@
     } else {
       host.classList.add("gl-mr-console", "gl-mr-console-right");
     }
-    const sidebar = doc.querySelector(".js-check-suites-sidebar");
-    if (sidebar && sidebar.parentElement) sidebar.parentElement.appendChild(host);
+    const rail = ensureMrRail(doc);
+    if (rail) rail.appendChild(host);
     else if (!host.parentElement && doc.body) doc.body.appendChild(host);
     host.dataset.signature = signature;
     host.replaceChildren();
@@ -756,6 +770,8 @@
     if (graph) graph.remove();
     const pipelines = doc.getElementById("gl-mr-pipelines");
     if (pipelines) pipelines.remove();
+    const rail = doc.getElementById("gl-mr-rail");
+    if (rail && !rail.querySelector("#gl-mr-security")) rail.remove();
     const bar = doc.getElementById("gl-job-bar");
     if (bar) bar.remove();
     showNativeGraph(doc);
@@ -832,4 +848,5 @@
   GL.clearPipeline = clearPipeline;
   GL.pagePath = pagePath;
   GL.pageHash = pageHash;
+  GL.ensureMrRail = ensureMrRail;
 })();
