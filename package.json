@@ -1,6 +1,6 @@
 {
   "name": "@maturitybuilder/gitlab-look",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Maturity Builder GitLab Overlay skin. Focuses GitHub around security and workflow efficiency.",
   "private": false,
   "files": [
