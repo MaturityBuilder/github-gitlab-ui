@@ -298,7 +298,7 @@
 
   function restoreLabels(doc) {
     doc.querySelectorAll("[data-gl-original]").forEach((node) => {
-      if (node.closest("#gl-pipeline-graph, #gl-job-bar, #gl-sidebar")) return;
+      if (node.closest("#gl-pipeline-graph, #gl-job-bar, #gl-sidebar, #gl-mr-pipelines")) return;
       const original = node.dataset.glOriginal;
       if (original === "Pull request" || original === "Pull requests" || original === "Actions") {
         node.textContent = original;

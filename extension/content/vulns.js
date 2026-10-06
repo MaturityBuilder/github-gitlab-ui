@@ -133,7 +133,7 @@
   function valueAfterLabel(root, labelRe) {
     const nodes = root.querySelectorAll("dt, h1, h2, h3, h4, strong, span, div, p, th");
     for (const node of nodes) {
-      if (node.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar")) continue;
+      if (node.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar, #gl-mr-pipelines")) continue;
       const text = spacedText(node);
       if (!text || text.length > 40 || !labelRe.test(text)) continue;
       const next = node.nextElementSibling;
@@ -495,7 +495,7 @@
   }
 
   function highlightLine(line, alerts, doc) {
-    if (line.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar, #gl-comment-order, .gl-vuln-note")) return;
+    if (line.closest("#gl-sidebar, #gl-pipeline-graph, #gl-job-bar, #gl-comment-order, #gl-mr-pipelines, .gl-vuln-note")) return;
     const inLog = Boolean(line.closest("check-step, .js-check-step, #logs"));
     const file = inLog ? "" : fileFor(line, doc);
     const text = line.textContent || "";

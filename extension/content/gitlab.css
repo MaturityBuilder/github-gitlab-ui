@@ -429,7 +429,8 @@ html.gl-look .gl-actions-sidebar .ActionListItem-label {
 }
 
 html.gl-look action-graph.gl-native-graph-hidden,
-html.gl-look .WorkflowGraph.gl-native-graph-hidden {
+html.gl-look .WorkflowGraph.gl-native-graph-hidden,
+html.gl-look .js-check-suites-sidebar.gl-native-checks-hidden {
   display: none !important;
 }
 
@@ -524,6 +525,126 @@ html.gl-look .gl-job-bar strong {
 html.gl-look .gl-job-bar a {
   color: var(--gl-blue);
   margin-left: auto;
+}
+
+html.gl-look .gl-mr-pipelines {
+  flex: 0 0 320px;
+  width: 320px;
+  max-width: 100%;
+  align-self: stretch;
+  overflow: auto;
+  padding: 12px;
+  background: var(--gl-surface);
+  border-right: 1px solid var(--gl-border);
+}
+
+html.gl-look .gl-mr-pipelines-title {
+  margin: 0 0 12px;
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--gl-heading);
+}
+
+html.gl-look .gl-mr-pipeline {
+  border: 1px solid var(--gl-border);
+  border-radius: 8px;
+  padding: 10px;
+  margin-bottom: 12px;
+  background: var(--gl-canvas);
+}
+
+html.gl-look .gl-mr-pipeline .gl-pipeline-leading {
+  flex-wrap: wrap;
+  margin-bottom: 8px;
+}
+
+html.gl-look .gl-mini-graph {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  overflow-x: auto;
+  padding: 4px 0 8px;
+}
+
+html.gl-look .gl-mini-line {
+  width: 16px;
+  height: 2px;
+  background: var(--gl-border);
+  flex: 0 0 16px;
+}
+
+html.gl-look .gl-mini-stage {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  color: var(--gl-muted);
+  font: inherit;
+  font-size: 11px;
+  min-width: 52px;
+}
+
+html.gl-look .gl-mini-stage.is-open .gl-mini-label {
+  color: var(--gl-heading);
+  font-weight: 600;
+}
+
+html.gl-look .gl-mini-node {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--gl-border);
+  background: var(--gl-skipped);
+  box-sizing: border-box;
+}
+
+html.gl-look .gl-mini-node.gl-status-dot-success {
+  background: var(--gl-success);
+  border-color: var(--gl-success);
+}
+
+html.gl-look .gl-mini-node.gl-status-dot-failed {
+  background: var(--gl-failed);
+  border-color: var(--gl-failed);
+}
+
+html.gl-look .gl-mini-node.gl-status-dot-running {
+  background: var(--gl-running);
+  border-color: var(--gl-running);
+  animation: gl-pulse 1s ease-in-out infinite;
+}
+
+html.gl-look .gl-mini-node.gl-status-dot-pending,
+html.gl-look .gl-mini-node.gl-status-dot-waiting {
+  background: var(--gl-waiting);
+  border-color: var(--gl-waiting);
+}
+
+html.gl-look .gl-mini-node.gl-status-dot-canceled,
+html.gl-look .gl-mini-node.gl-status-dot-skipped {
+  background: var(--gl-skipped);
+  border-color: var(--gl-border);
+}
+
+html.gl-look .gl-mini-jobs .gl-job-pill {
+  margin-top: 6px;
+  padding: 6px 8px;
+}
+
+html.gl-look .gl-job-pill[aria-current="page"] {
+  border-color: var(--gl-blue);
+  background: #e9f3fc;
+}
+
+@keyframes gl-pulse {
+  50% {
+    opacity: 0.45;
+  }
 }
 
 html.gl-look .js-check-step,
