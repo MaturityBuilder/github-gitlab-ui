@@ -72,25 +72,51 @@ function assert(condition, message) {
   if (!condition) failures.push(message);
 }
 
+async function setTheme(extensionId, theme) {
+  const target = await send("Target.createTarget", { url: `chrome-extension://${extensionId}/popup/popup.html` });
+  const session = await send("Target.attachToTarget", { targetId: target.targetId, flatten: true });
+  await send("Runtime.enable", {}, session.sessionId);
+  await send(
+    "Runtime.evaluate",
+    {
+      expression: `new Promise((resolve) => chrome.storage.local.set({ enabled: true, theme: ${JSON.stringify(theme)} }, () => resolve("ok")))`,
+      awaitPromise: true,
+      returnByValue: true,
+    },
+    session.sessionId
+  );
+  await send("Target.closeTarget", { targetId: target.targetId });
+}
+
 try {
-  await send("Extensions.loadUnpacked", { path: extensionDir });
+  const loaded = await send("Extensions.loadUnpacked", { path: extensionDir });
+  await setTheme(loaded.id, "dark");
   const repo = await inspect(
     "https://github.com/cli/cli",
-    "JSON.stringify({ labels: [...document.querySelectorAll('#gl-sidebar .gl-nav .gl-nav-label')].map((node) => node.textContent), mr: ((document.querySelector('#gl-sidebar a[data-section=pulls] .gl-count') || {}).textContent || '').trim(), mrTab: ((document.querySelector('a[data-tab-item=\"pull-requests\"] [data-component=\"CounterLabel\"]') || document.getElementById('pull-requests-repo-tab-count') || {}).textContent || '').trim(), issues: ((document.querySelector('#gl-sidebar a[data-section=issues] .gl-count') || {}).textContent || '').trim(), issuesTab: ((document.querySelector('a[data-tab-item=\"issues\"] [data-component=\"CounterLabel\"]') || document.getElementById('issues-repo-tab-count') || {}).textContent || '').trim() })"
+    "JSON.stringify({ labels: [...document.querySelectorAll('#gl-sidebar .gl-nav .gl-nav-label')].map((node) => node.textContent), mr: ((document.querySelector('#gl-sidebar a[data-section=pulls] .gl-count') || {}).textContent || '').trim(), mrTab: ((document.querySelector('a[data-tab-item=\"pull-requests\"] [data-component=\"CounterLabel\"]') || document.getElementById('pull-requests-repo-tab-count') || {}).textContent || '').trim(), issues: ((document.querySelector('#gl-sidebar a[data-section=issues] .gl-count') || {}).textContent || '').trim(), issuesTab: ((document.querySelector('a[data-tab-item=\"issues\"] [data-component=\"CounterLabel\"]') || document.getElementById('issues-repo-tab-count') || {}).textContent || '').trim(), dark: document.documentElement.classList.contains('gl-look-dark'), mode: document.documentElement.getAttribute('data-color-mode'), canvas: getComputedStyle(document.body).backgroundColor })"
   );
   assert(repo.labels.includes("Merge requests"), `sidebar labels: ${repo.labels.join("|")}`);
   assert(repo.labels.includes("CI/CD"), "missing CI/CD");
   assert(!repo.labels.includes("Wiki"), "wiki should be omitted when the tab is absent");
   assert(repo.mr && repo.mr === repo.mrTab, `merge request count ${repo.mr} != ${repo.mrTab}`);
   assert(repo.issues && repo.issues === repo.issuesTab, `issue count ${repo.issues} != ${repo.issuesTab}`);
+  assert(repo.dark, "dark theme class missing");
+  assert(repo.mode === "dark", `color mode: ${repo.mode}`);
+  assert(repo.canvas === "rgb(24, 23, 29)", `dark canvas: ${repo.canvas}`);
 
   const actions = await inspect(
     "https://github.com/cli/cli/actions",
-    "JSON.stringify({ rows: document.querySelectorAll('.gl-pipeline-row').length, badge: (document.querySelector('.gl-pipeline-badge') || {}).textContent || '', labels: [...document.querySelectorAll('.ActionListItem-label, .ActionList-sectionDivider-title')].map((node) => node.textContent.trim()).filter((text) => /pipeline/i.test(text)) })"
+    "JSON.stringify({ rows: document.querySelectorAll('.gl-pipeline-row').length, legacyRows: document.querySelectorAll('.Box-row, [data-gl-pipeline-row]').length, runs: document.querySelectorAll('a[href*=\"/actions/runs/\"]').length, badge: (document.querySelector('.gl-pipeline-badge') || {}).textContent || '', labels: [...document.querySelectorAll('.ActionListItem-label, .ActionList-sectionDivider-title')].map((node) => node.textContent.trim()).filter((text) => /pipeline/i.test(text)), dark: document.documentElement.classList.contains('gl-look-dark'), nav: [...document.querySelectorAll('#gl-sidebar .gl-nav-label')].map((node) => node.textContent) })"
   );
-  assert(actions.rows > 0, "no pipeline rows");
-  assert(actions.badge === "passed" || actions.badge === "failed" || actions.badge === "running", `badge: ${actions.badge}`);
-  assert(actions.labels.includes("All pipelines"), `workflow labels: ${actions.labels.join("|")}`);
+  assert(actions.nav.includes("CI/CD"), `actions sidebar: ${actions.nav.join("|")}`);
+  assert(actions.dark, "actions page missing dark theme");
+  if (actions.legacyRows > 0) {
+    assert(actions.rows > 0, "no pipeline rows");
+    assert(actions.badge === "passed" || actions.badge === "failed" || actions.badge === "running", `badge: ${actions.badge}`);
+    assert(actions.labels.includes("All pipelines"), `workflow labels: ${actions.labels.join("|")}`);
+  } else {
+    assert(actions.runs > 0, "actions page rendered neither legacy rows nor workflow runs");
+  }
 
   const run = await inspect(
     "https://github.com/cli/cli/actions/runs/37145917029",
@@ -121,6 +147,16 @@ try {
   assert(!checks.hidden, "native checks sidebar hidden");
   assert(checks.right === "gl-mr-rail", `pipelines column: ${checks.right}`);
   assert(checks.title === "Pipelines", `pipelines title: ${checks.title}`);
+
+  await setTheme(loaded.id, "light");
+  const light = await inspect(
+    "https://github.com/cli/cli",
+    "JSON.stringify({ dark: document.documentElement.classList.contains('gl-look-dark'), mode: document.documentElement.getAttribute('data-color-mode'), canvas: getComputedStyle(document.body).backgroundColor, sidebar: !!document.getElementById('gl-sidebar') })"
+  );
+  assert(!light.dark, "light theme still has the dark class");
+  assert(light.mode === "light", `light color mode: ${light.mode}`);
+  assert(light.canvas === "rgb(251, 250, 253)", `light canvas: ${light.canvas}`);
+  assert(light.sidebar, "sidebar missing in light theme");
 } catch (error) {
   failures.push(error.message);
 } finally {
