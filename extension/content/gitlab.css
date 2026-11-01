@@ -139,6 +139,11 @@ html.gl-look.gl-look-repo {
   --gl-sidebar-offset: 288px;
 }
 
+html.gl-look {
+  background-color: var(--gl-canvas);
+  color: var(--gl-text);
+}
+
 html.gl-look body {
   background: var(--gl-canvas);
   color: var(--gl-text);

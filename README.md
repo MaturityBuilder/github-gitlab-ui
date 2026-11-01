@@ -30,7 +30,7 @@ The skin is on by default, in the System appearance. The toolbar popup turns the
 
 ## What it changes
 
-- Light and dark content surfaces, blue primary actions, and an orange accent, using colors from GitLab's Pajamas palette. The toolbar popup chooses Light, Dark, or System. System follows this browser's color scheme. While the skin is on, GitHub's own color mode follows that choice, and turning the skin off puts GitHub's previous color mode back.
+- Light and dark content surfaces, blue primary actions, and an orange accent, using colors from GitLab's Pajamas palette. The toolbar popup chooses Light, Dark, or System. System follows this browser's color scheme. The choice is applied before the page paints, so a reload does not flash GitHub's colors first. While the skin is on, GitHub's own color mode follows that choice, and turning the skin off puts GitHub's previous color mode back.
 - A fixed super sidebar on repository pages: Repository, Issues, Merge requests, CI/CD, Wiki (when the repo has one), Insights, and Settings. Issues and Merge requests show the same counts GitHub already puts on those tabs. The horizontal repository tabs are hidden while the skin is on.
 - Visible headings that say "Pull request" or "Pull requests" display as "Merge request" or "Merge requests".
 - GitHub Actions lists render as pipeline rows (status, pipeline number, commit link, branch, actor, duration). A workflow run renders as stage columns. Job names that share a prefix such as `test / node 18` share a stage. The job log page gets a GitLab-style header and a link back to `Pipeline #<id>`. Log text is unchanged. Rerun and cancel stay GitHub's controls.
@@ -61,6 +61,8 @@ What it saves in `chrome.storage.local`:
 - `dependabotAlerts` — for each repository, the open alerts it has already parsed: alert number, package name, severity, manifest path, version range, advisory ids such as `GHSA-…` or `CVE-…`, the alert link, open or closed state, and the time that cache was saved.
 
 Those cached alerts are used to highlight matching package names, versions, and advisory ids in manifest files and Actions logs. Dismissed alerts are left alone. Removing the extension deletes this `chrome.storage.local` data.
+
+`enabled` and `theme` are also copied to `localStorage` on `github.com` (`gl-enabled`, `gl-theme`) so the next reload can paint the skin before GitHub draws. Clearing site data for `github.com` removes that copy. The extension does not read anything else from `localStorage`.
 
 Pages you open on GitHub are still GitHub's. GitHub's own privacy policy covers what GitHub receives while you browse. This project is not affiliated with GitLab or GitHub.
 

@@ -93,7 +93,7 @@ try {
   await setTheme(loaded.id, "dark");
   const repo = await inspect(
     "https://github.com/cli/cli",
-    "JSON.stringify({ labels: [...document.querySelectorAll('#gl-sidebar .gl-nav .gl-nav-label')].map((node) => node.textContent), mr: ((document.querySelector('#gl-sidebar a[data-section=pulls] .gl-count') || {}).textContent || '').trim(), mrTab: ((document.querySelector('a[data-tab-item=\"pull-requests\"] [data-component=\"CounterLabel\"]') || document.getElementById('pull-requests-repo-tab-count') || {}).textContent || '').trim(), issues: ((document.querySelector('#gl-sidebar a[data-section=issues] .gl-count') || {}).textContent || '').trim(), issuesTab: ((document.querySelector('a[data-tab-item=\"issues\"] [data-component=\"CounterLabel\"]') || document.getElementById('issues-repo-tab-count') || {}).textContent || '').trim(), dark: document.documentElement.classList.contains('gl-look-dark'), mode: document.documentElement.getAttribute('data-color-mode'), canvas: getComputedStyle(document.body).backgroundColor })"
+    "JSON.stringify({ labels: [...document.querySelectorAll('#gl-sidebar .gl-nav .gl-nav-label')].map((node) => node.textContent), mr: ((document.querySelector('#gl-sidebar a[data-section=pulls] .gl-count') || {}).textContent || '').trim(), mrTab: ((document.querySelector('a[data-tab-item=\"pull-requests\"] [data-component=\"CounterLabel\"]') || document.getElementById('pull-requests-repo-tab-count') || {}).textContent || '').trim(), issues: ((document.querySelector('#gl-sidebar a[data-section=issues] .gl-count') || {}).textContent || '').trim(), issuesTab: ((document.querySelector('a[data-tab-item=\"issues\"] [data-component=\"CounterLabel\"]') || document.getElementById('issues-repo-tab-count') || {}).textContent || '').trim(), dark: document.documentElement.classList.contains('gl-look-dark'), mode: document.documentElement.getAttribute('data-color-mode'), canvas: getComputedStyle(document.body).backgroundColor, boot: document.documentElement.dataset.glBoot || '' })"
   );
   assert(repo.labels.includes("Merge requests"), `sidebar labels: ${repo.labels.join("|")}`);
   assert(repo.labels.includes("CI/CD"), "missing CI/CD");
@@ -103,6 +103,7 @@ try {
   assert(repo.dark, "dark theme class missing");
   assert(repo.mode === "dark", `color mode: ${repo.mode}`);
   assert(repo.canvas === "rgb(24, 23, 29)", `dark canvas: ${repo.canvas}`);
+  assert(repo.boot === "early", `theme boot timing: ${repo.boot}`);
 
   const actions = await inspect(
     "https://github.com/cli/cli/actions",

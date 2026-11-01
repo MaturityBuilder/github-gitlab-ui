@@ -94,6 +94,7 @@
       area.get(defaults, (stored) => {
         const next = Object.assign({}, defaults, stored);
         next.theme = normalizeTheme(next.theme);
+        if (GL.rememberSettings) GL.rememberSettings(next);
         resolve(next);
       });
     });
@@ -356,8 +357,13 @@
     }
   }
 
+  function mirrorSettings(next) {
+    if (GL.rememberSettings) GL.rememberSettings(next);
+  }
+
   function applyColorMode(doc, on) {
     const html = doc.documentElement;
+    if (GL.applyFastTheme) GL.applyFastTheme({ enabled: on, theme: settings.theme }, { doc: doc });
     if (!on) {
       html.classList.remove("gl-look-dark");
       if (html.dataset.glPrevColorMode === undefined) return;
@@ -366,6 +372,7 @@
       delete html.dataset.glPrevColorMode;
       return;
     }
+    if (GL.applyFastTheme) return;
     if (html.dataset.glPrevColorMode === undefined) {
       html.dataset.glPrevColorMode = html.getAttribute("data-color-mode") || "";
     }
@@ -441,6 +448,7 @@
         if (!message || message.type !== "gl-look-settings") return;
         settings.enabled = message.enabled !== false;
         if (message.theme) settings.theme = normalizeTheme(message.theme);
+        mirrorSettings(settings);
         render(document, settings);
       });
     }
@@ -450,6 +458,7 @@
         if (changes.enabled) settings.enabled = changes.enabled.newValue !== false;
         if (changes.commentOrder) settings.commentOrder = changes.commentOrder.newValue || "asc";
         if (changes.theme) settings.theme = normalizeTheme(changes.theme.newValue);
+        mirrorSettings(settings);
         render(document, settings);
       });
     }
