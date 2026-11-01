@@ -1,14 +1,36 @@
 :root {
   color-scheme: light;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans", Helvetica, Arial, sans-serif;
+  --popup-canvas: #fbfafd;
+  --popup-surface: #fff;
+  --popup-text: #333238;
+  --popup-heading: #18171d;
+  --popup-muted: #737278;
+  --popup-border: #dcdcde;
+  --popup-subtle: #ececef;
+  --popup-blue: #1f75cb;
+  --popup-selected: #e9f3fc;
+}
+
+html.gl-popup-dark {
+  color-scheme: dark;
+  --popup-canvas: #18171d;
+  --popup-surface: #28272d;
+  --popup-text: #ececef;
+  --popup-heading: #fff;
+  --popup-muted: #bfbfc3;
+  --popup-border: #4c4b51;
+  --popup-subtle: #3a383f;
+  --popup-blue: #9dc7f1;
+  --popup-selected: #284779;
 }
 
 body {
   margin: 0;
   width: 280px;
   padding: 16px;
-  background: #fbfafd;
-  color: #333238;
+  background: var(--popup-canvas);
+  color: var(--popup-text);
 }
 
 .popup-header {
@@ -22,21 +44,21 @@ h1 {
   margin: 0;
   font-size: 15px;
   font-weight: 600;
-  color: #18171d;
+  color: var(--popup-heading);
 }
 
 p {
   margin: 2px 0 0;
   font-size: 12px;
-  color: #737278;
+  color: var(--popup-muted);
 }
 
 .toggle {
   display: flex;
   align-items: center;
   gap: 10px;
-  background: #fff;
-  border: 1px solid #dcdcde;
+  background: var(--popup-surface);
+  border: 1px solid var(--popup-border);
   border-radius: 8px;
   padding: 10px 12px;
   cursor: pointer;
@@ -52,7 +74,7 @@ p {
   width: 36px;
   height: 20px;
   border-radius: 999px;
-  background: #dcdcde;
+  background: var(--popup-border);
   position: relative;
   flex: 0 0 auto;
 }
@@ -65,7 +87,7 @@ p {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #fff;
+  background: var(--popup-surface);
   transition: transform 0.15s ease;
 }
 
@@ -73,18 +95,81 @@ p {
   background: #1f75cb;
 }
 
+html.gl-popup-dark .toggle input:checked + .track {
+  background: #63a6e9;
+}
+
 .toggle input:checked + .track::after {
   transform: translateX(16px);
 }
 
 .toggle input:focus-visible + .track {
-  outline: 2px solid #1f75cb;
+  outline: 2px solid var(--popup-blue);
   outline-offset: 2px;
 }
 
 .label {
   font-size: 14px;
   font-weight: 600;
+  color: var(--popup-heading);
+}
+
+.theme {
+  margin: 12px 0 0;
+  padding: 0;
+  border: 0;
+}
+
+.theme legend {
+  padding: 0;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--popup-muted);
+}
+
+.theme-options {
+  display: flex;
+  border: 1px solid var(--popup-border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--popup-surface);
+}
+
+.theme-options label {
+  flex: 1;
+  position: relative;
+  cursor: pointer;
+}
+
+.theme-options input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.theme-options span {
+  display: block;
+  padding: 8px 0;
+  text-align: center;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--popup-text);
+  border-left: 1px solid var(--popup-border);
+}
+
+.theme-options label:first-child span {
+  border-left: 0;
+}
+
+.theme-options input:checked + span {
+  background: var(--popup-selected);
+  color: var(--popup-blue);
+}
+
+.theme-options input:focus-visible + span {
+  outline: 2px solid var(--popup-blue);
+  outline-offset: -2px;
 }
 
 .hint {

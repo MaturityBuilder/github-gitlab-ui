@@ -52,28 +52,50 @@
   ]);
 
   let rendering = false;
-  let settings = { enabled: true, commentOrder: "asc" };
+  let settings = { enabled: true, commentOrder: "asc", theme: "system" };
+
+  function normalizeTheme(value) {
+    return value === "light" || value === "dark" || value === "system" ? value : "system";
+  }
+
+  function prefersDark(doc) {
+    const view = (doc && doc.defaultView) || globalThis;
+    if (!view.matchMedia) return false;
+    return view.matchMedia("(prefers-color-scheme: dark)").matches;
+  }
+
+  function resolvedTheme(theme, doc) {
+    const choice = normalizeTheme(theme);
+    if (choice === "system") return prefersDark(doc) ? "dark" : "light";
+    return choice;
+  }
 
   function storageArea() {
     return globalThis.chrome && chrome.storage && chrome.storage.local;
   }
 
   function readSettings() {
-    const defaults = { enabled: true, commentOrder: "asc" };
+    const defaults = { enabled: true, commentOrder: "asc", theme: "system" };
     const area = storageArea();
     if (!area) {
       let enabled = true;
       let commentOrder = "asc";
+      let theme = "system";
       try {
         enabled = localStorage.getItem("gl-enabled") !== "false";
         commentOrder = localStorage.getItem("gl-comment-order") || "asc";
+        theme = localStorage.getItem("gl-theme") || "system";
       } catch (error) {
         enabled = true;
       }
-      return Promise.resolve({ enabled, commentOrder });
+      return Promise.resolve({ enabled, commentOrder, theme: normalizeTheme(theme) });
     }
     return new Promise((resolve) => {
-      area.get(defaults, (stored) => resolve(Object.assign({}, defaults, stored)));
+      area.get(defaults, (stored) => {
+        const next = Object.assign({}, defaults, stored);
+        next.theme = normalizeTheme(next.theme);
+        resolve(next);
+      });
     });
   }
 
@@ -334,19 +356,22 @@
     }
   }
 
-  function forceLight(doc, on) {
+  function applyColorMode(doc, on) {
     const html = doc.documentElement;
-    if (on) {
-      if (html.dataset.glPrevColorMode === undefined) {
-        html.dataset.glPrevColorMode = html.getAttribute("data-color-mode") || "";
-      }
-      html.setAttribute("data-color-mode", "light");
+    if (!on) {
+      html.classList.remove("gl-look-dark");
+      if (html.dataset.glPrevColorMode === undefined) return;
+      if (html.dataset.glPrevColorMode) html.setAttribute("data-color-mode", html.dataset.glPrevColorMode);
+      else html.removeAttribute("data-color-mode");
+      delete html.dataset.glPrevColorMode;
       return;
     }
-    if (html.dataset.glPrevColorMode === undefined) return;
-    if (html.dataset.glPrevColorMode) html.setAttribute("data-color-mode", html.dataset.glPrevColorMode);
-    else html.removeAttribute("data-color-mode");
-    delete html.dataset.glPrevColorMode;
+    if (html.dataset.glPrevColorMode === undefined) {
+      html.dataset.glPrevColorMode = html.getAttribute("data-color-mode") || "";
+    }
+    const dark = resolvedTheme(settings.theme, doc) === "dark";
+    html.classList.toggle("gl-look-dark", dark);
+    html.setAttribute("data-color-mode", dark ? "dark" : "light");
   }
 
   function render(doc, nextSettings) {
@@ -354,11 +379,12 @@
     rendering = true;
     try {
       settings = nextSettings || settings;
+      settings.theme = normalizeTheme(settings.theme);
       const enabled = settings.enabled !== false;
       const html = doc.documentElement;
       if (!enabled) {
-        html.classList.remove("gl-look", "gl-look-repo");
-        forceLight(doc, false);
+        html.classList.remove("gl-look", "gl-look-repo", "gl-look-dark");
+        applyColorMode(doc, false);
         removeSidebar(doc);
         restoreLabels(doc);
         if (GL.clearPipeline) GL.clearPipeline(doc);
@@ -369,7 +395,7 @@
         return;
       }
       html.classList.add("gl-look");
-      forceLight(doc, true);
+      applyColorMode(doc, true);
       const repo = parseRepo(GL.pagePath(doc));
       html.classList.toggle("gl-look-repo", Boolean(repo));
       if (doc.body) ensureSidebar(doc, repo);
@@ -414,6 +440,7 @@
       chrome.runtime.onMessage.addListener((message) => {
         if (!message || message.type !== "gl-look-settings") return;
         settings.enabled = message.enabled !== false;
+        if (message.theme) settings.theme = normalizeTheme(message.theme);
         render(document, settings);
       });
     }
@@ -422,12 +449,22 @@
         if (area !== "local") return;
         if (changes.enabled) settings.enabled = changes.enabled.newValue !== false;
         if (changes.commentOrder) settings.commentOrder = changes.commentOrder.newValue || "asc";
+        if (changes.theme) settings.theme = normalizeTheme(changes.theme.newValue);
+        render(document, settings);
+      });
+    }
+    const scheme = window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)");
+    if (scheme && scheme.addEventListener) {
+      scheme.addEventListener("change", () => {
+        if (normalizeTheme(settings.theme) !== "system") return;
         render(document, settings);
       });
     }
   }
 
   GL.readSettings = readSettings;
+  GL.normalizeTheme = normalizeTheme;
+  GL.resolvedTheme = resolvedTheme;
   GL.render = render;
   GL.parseRepo = parseRepo;
   GL.saveCommentOrder = saveCommentOrder;

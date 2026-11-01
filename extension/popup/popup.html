@@ -19,7 +19,24 @@
       <span class="track" aria-hidden="true"></span>
       <span class="label">Show GitLab look</span>
     </label>
-    <p class="hint">Oldest / Newest on a pull request is remembered on this browser.</p>
+    <fieldset class="theme">
+      <legend>Appearance</legend>
+      <div class="theme-options" role="radiogroup" aria-label="Appearance">
+        <label>
+          <input type="radio" name="theme" value="light" />
+          <span>Light</span>
+        </label>
+        <label>
+          <input type="radio" name="theme" value="dark" />
+          <span>Dark</span>
+        </label>
+        <label>
+          <input type="radio" name="theme" value="system" />
+          <span>System</span>
+        </label>
+      </div>
+    </fieldset>
+    <p class="hint">Light, Dark, or System follows this browser. Oldest / Newest on a pull request is remembered here too.</p>
     <script src="popup.js"></script>
   </body>
 </html>

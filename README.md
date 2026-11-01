@@ -26,11 +26,11 @@ Repository pages use a sidebar instead of the horizontal tabs. Issues and merge 
 
 The overlay keeps workflow details close at hand: GitHub Actions lists appear as pipeline rows, a workflow run appears as stage columns, and a merge request Checks tab keeps GitHub's job list on the left with GitLab pipeline cards on the right. Open Dependabot findings are listed in a Security console on the merge request. Oldest and Newest reorder a pull request conversation. Security information is brought onto the same pages: open Dependabot alerts are highlighted in dependency files and job logs. Dismissed alerts are left alone. Those details stay in the browser.
 
-The skin is on by default. The toolbar popup turns it off. This project is not affiliated with GitLab or GitHub.
+The skin is on by default, in the System appearance. The toolbar popup turns the skin off and switches Light, Dark, or System. This project is not affiliated with GitLab or GitHub.
 
 ## What it changes
 
-- Light content surface, blue primary actions, and an orange accent, using colors from GitLab's Pajamas palette.
+- Light and dark content surfaces, blue primary actions, and an orange accent, using colors from GitLab's Pajamas palette. The toolbar popup chooses Light, Dark, or System. System follows this browser's color scheme. While the skin is on, GitHub's own color mode follows that choice, and turning the skin off puts GitHub's previous color mode back.
 - A fixed super sidebar on repository pages: Repository, Issues, Merge requests, CI/CD, Wiki (when the repo has one), Insights, and Settings. Issues and Merge requests show the same counts GitHub already puts on those tabs. The horizontal repository tabs are hidden while the skin is on.
 - Visible headings that say "Pull request" or "Pull requests" display as "Merge request" or "Merge requests".
 - GitHub Actions lists render as pipeline rows (status, pipeline number, commit link, branch, actor, duration). A workflow run renders as stage columns. Job names that share a prefix such as `test / node 18` share a stage. The job log page gets a GitLab-style header and a link back to `Pipeline #<id>`. Log text is unchanged. Rerun and cancel stay GitHub's controls.
@@ -41,7 +41,7 @@ The skin is on by default. The toolbar popup turns it off. This project is not a
 
 ## Permissions
 
-The manifest requests one permission: `storage`. `chrome.storage.local` keeps three things on this computer: whether the skin is on, the Oldest or Newest choice, and the Dependabot alerts already read for a repository. Without `storage`, the skin still draws, and those three choices do not stick.
+The manifest requests one permission: `storage`. `chrome.storage.local` keeps four things on this computer: whether the skin is on, the Light, Dark, or System appearance, the Oldest or Newest choice, and the Dependabot alerts already read for a repository. Without `storage`, the skin still draws, and those choices do not stick. Appearance then follows System for the current page only.
 
 There is no `host_permissions` entry. The style sheet and scripts are limited to GitHub by the content-script match on `https://github.com/*`. The Dependabot page is read with an ordinary fetch from the GitHub tab you already have open, using the GitHub session already in that tab. The popup does not request GitHub on its own.
 
@@ -56,6 +56,7 @@ The extension runs on `https://github.com/*`. On a repository page it can read t
 What it saves in `chrome.storage.local`:
 
 - `enabled` — whether the skin is on.
+- `theme` — `light`, `dark`, or `system`.
 - `commentOrder` — `asc` for Oldest, or `desc` for Newest.
 - `dependabotAlerts` — for each repository, the open alerts it has already parsed: alert number, package name, severity, manifest path, version range, advisory ids such as `GHSA-…` or `CVE-…`, the alert link, open or closed state, and the time that cache was saved.
 

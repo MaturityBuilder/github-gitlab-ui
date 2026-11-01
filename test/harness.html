@@ -3,6 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <title>GitLab look harness</title>
+    <link rel="stylesheet" href="../extension/content/gitlab.css" />
   </head>
   <body>
     <pre id="out"></pre>
@@ -393,6 +394,38 @@
       assert(!document.getElementById("gl-sidebar"), "sidebar removed");
       assert(document.querySelector("h1").textContent === "Pull requests", "heading restored");
       assert(document.title === "Pull requests · acme/widgets · GitHub", "title restored: " + document.title);
+
+      document.documentElement.setAttribute("data-color-mode", "auto");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc", theme: "dark" });
+      assert(document.documentElement.classList.contains("gl-look-dark"), "dark class");
+      assert(document.documentElement.getAttribute("data-color-mode") === "dark", "github color mode follows dark");
+      assert(getComputedStyle(document.body).backgroundColor === "rgb(24, 23, 29)", "dark canvas " + getComputedStyle(document.body).backgroundColor);
+      const probe = document.createElement("div");
+      probe.className = "gl-status gl-status-failed";
+      probe.textContent = "failed";
+      document.body.appendChild(probe);
+      assert(getComputedStyle(probe).color === "rgb(252, 181, 170)", "dark failed text " + getComputedStyle(probe).color);
+      assert(getComputedStyle(probe).backgroundColor === "rgb(129, 39, 19)", "dark failed surface " + getComputedStyle(probe).backgroundColor);
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc", theme: "light" });
+      assert(!document.documentElement.classList.contains("gl-look-dark"), "light clears dark class");
+      assert(document.documentElement.getAttribute("data-color-mode") === "light", "github color mode follows light");
+      assert(getComputedStyle(document.body).backgroundColor === "rgb(251, 250, 253)", "light canvas " + getComputedStyle(document.body).backgroundColor);
+      assert(GitLabLook.normalizeTheme("neon") === "system", "unknown theme falls back to system");
+      const originalMatch = window.matchMedia;
+      window.matchMedia = function (query) {
+        return { matches: String(query).indexOf("dark") !== -1, media: query, addEventListener: function () {}, removeEventListener: function () {} };
+      };
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc", theme: "system" });
+      assert(document.documentElement.classList.contains("gl-look-dark"), "system theme follows a dark preference");
+      window.matchMedia = function () {
+        return { matches: false, media: "", addEventListener: function () {}, removeEventListener: function () {} };
+      };
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc", theme: "system" });
+      assert(!document.documentElement.classList.contains("gl-look-dark"), "system theme follows a light preference");
+      window.matchMedia = originalMatch;
+      GitLabLook.render(document, { enabled: false, commentOrder: "asc", theme: "dark" });
+      assert(!document.documentElement.classList.contains("gl-look-dark"), "dark class removed with the skin");
+      assert(document.documentElement.getAttribute("data-color-mode") === "auto", "previous github color mode restored");
       } catch (error) {
         failures.push("exception: " + (error && error.stack ? error.stack : error));
       }
