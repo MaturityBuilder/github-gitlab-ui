@@ -20,6 +20,7 @@ const input = chrome.stdio[3];
 const output = chrome.stdio[4];
 let buf = Buffer.alloc(0);
 const pending = new Map();
+const events = [];
 output.on("data", (chunk) => {
   buf = Buffer.concat([buf, chunk]);
   while (true) {
@@ -37,6 +38,8 @@ output.on("data", (chunk) => {
     if (message.id && pending.has(message.id)) {
       pending.get(message.id)(message);
       pending.delete(message.id);
+    } else if (message.method) {
+      events.push(message);
     }
   }
 });
@@ -72,27 +75,97 @@ function assert(condition, message) {
   if (!condition) failures.push(message);
 }
 
+function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+// A popup target accepts a script before its extension context exists, so
+// the storage write is dropped and the page stays on the default theme.
+// Content scripts are already running on GitHub; write the theme from that
+// isolated world, passing it as an argument, and read it back.
 async function setTheme(extensionId, theme) {
-  const target = await send("Target.createTarget", { url: `chrome-extension://${extensionId}/popup/popup.html` });
+  const target = await send("Target.createTarget", { url: "https://github.com/cli/cli" });
   const session = await send("Target.attachToTarget", { targetId: target.targetId, flatten: true });
-  await send("Runtime.enable", {}, session.sessionId);
-  const windowHandle = await send("Runtime.evaluate", { expression: "window" }, session.sessionId);
-  await send(
-    "Runtime.callFunctionOn",
-    {
-      objectId: windowHandle.result.objectId,
-      functionDeclaration: `function(themeValue) {
-        return new Promise((resolve) => {
-          chrome.storage.local.set({ enabled: true, theme: themeValue }, () => resolve("ok"));
-        });
-      }`,
-      arguments: [{ value: theme }],
-      awaitPromise: true,
-      returnByValue: true,
-    },
-    session.sessionId
-  );
+  const sessionId = session.sessionId;
+  await send("Runtime.enable", {}, sessionId);
+  const deadline = Date.now() + 15000;
+  const skipped = new Set();
+  let stored = null;
+  let lastFailure = "no content script";
+  while (Date.now() < deadline && !(stored && stored.ok)) {
+    const created = events.filter(
+      (event) => event.sessionId === sessionId && event.method === "Runtime.executionContextCreated"
+    );
+    for (const event of created) {
+      const contextId = event.params && event.params.context && event.params.context.id;
+      if (!contextId || skipped.has(contextId)) continue;
+      let probe;
+      try {
+        probe = await send(
+          "Runtime.evaluate",
+          {
+            expression: "globalThis.chrome && chrome.runtime && chrome.runtime.id || ''",
+            returnByValue: true,
+            contextId,
+          },
+          sessionId
+        );
+      } catch (error) {
+        continue;
+      }
+      if (!probe.result || probe.result.value !== extensionId) {
+        if (probe.result && typeof probe.result.value === "string") skipped.add(contextId);
+        continue;
+      }
+      const windowHandle = await send("Runtime.evaluate", { expression: "window", contextId }, sessionId);
+      const objectId = windowHandle.result && windowHandle.result.objectId;
+      if (!objectId) continue;
+      const written = await send(
+        "Runtime.callFunctionOn",
+        {
+          objectId,
+          functionDeclaration: `function(themeValue) {
+            return new Promise((resolve) => {
+              try {
+                chrome.storage.local.set({ enabled: true, theme: themeValue }, () => {
+                  const failure = chrome.runtime.lastError;
+                  if (failure) {
+                    resolve({ ok: false, error: failure.message });
+                    return;
+                  }
+                  chrome.storage.local.get(null, (items) => {
+                    resolve({
+                      ok: items.theme === themeValue && items.enabled !== false,
+                      theme: items.theme,
+                      enabled: items.enabled,
+                    });
+                  });
+                });
+              } catch (error) {
+                resolve({ ok: false, error: String(error) });
+              }
+            });
+          }`,
+          arguments: [{ value: theme }],
+          awaitPromise: true,
+          returnByValue: true,
+        },
+        sessionId
+      );
+      if (written.exceptionDetails) {
+        lastFailure = written.exceptionDetails.text || "storage write failed";
+        continue;
+      }
+      stored = written.result && written.result.value;
+      if (stored && stored.ok) break;
+      lastFailure = (stored && (stored.error || stored.theme)) || "storage write returned nothing";
+    }
+    if (!(stored && stored.ok)) await delay(200);
+  }
   await send("Target.closeTarget", { targetId: target.targetId });
+  if (!stored || !stored.ok) {
+    throw new Error(`theme ${theme} was not stored (${lastFailure})`);
+  }
 }
 
 try {
