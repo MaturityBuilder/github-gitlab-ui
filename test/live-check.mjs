@@ -76,10 +76,17 @@ async function setTheme(extensionId, theme) {
   const target = await send("Target.createTarget", { url: `chrome-extension://${extensionId}/popup/popup.html` });
   const session = await send("Target.attachToTarget", { targetId: target.targetId, flatten: true });
   await send("Runtime.enable", {}, session.sessionId);
+  const windowHandle = await send("Runtime.evaluate", { expression: "window" }, session.sessionId);
   await send(
-    "Runtime.evaluate",
+    "Runtime.callFunctionOn",
     {
-      expression: `new Promise((resolve) => chrome.storage.local.set({ enabled: true, theme: ${JSON.stringify(theme)} }, () => resolve("ok")))`,
+      objectId: windowHandle.result.objectId,
+      functionDeclaration: `function(themeValue) {
+        return new Promise((resolve) => {
+          chrome.storage.local.set({ enabled: true, theme: themeValue }, () => resolve("ok"));
+        });
+      }`,
+      arguments: [{ value: theme }],
       awaitPromise: true,
       returnByValue: true,
     },
