@@ -7,12 +7,14 @@
   </head>
   <body>
     <pre id="out"></pre>
+    <script src="../extension/content/boot.js"></script>
     <script src="../extension/content/pipeline.js"></script>
     <script src="../extension/content/comments.js"></script>
     <script src="../extension/content/vulns.js"></script>
     <script src="../extension/content/content.js"></script>
     <script>
       const failures = [];
+      let expectRepin = false;
       function assert(condition, message) {
         if (!condition) failures.push(message);
       }
@@ -399,6 +401,8 @@
       GitLabLook.render(document, { enabled: true, commentOrder: "asc", theme: "dark" });
       assert(document.documentElement.classList.contains("gl-look-dark"), "dark class");
       assert(document.documentElement.getAttribute("data-color-mode") === "dark", "github color mode follows dark");
+      document.documentElement.setAttribute("data-color-mode", "light");
+      assert(document.documentElement.getAttribute("data-color-mode") === "dark", "color mode stays pinned while the skin is on");
       assert(getComputedStyle(document.body).backgroundColor === "rgb(24, 23, 29)", "dark canvas " + getComputedStyle(document.body).backgroundColor);
       const probe = document.createElement("div");
       probe.className = "gl-status gl-status-failed";
@@ -426,13 +430,24 @@
       GitLabLook.render(document, { enabled: false, commentOrder: "asc", theme: "dark" });
       assert(!document.documentElement.classList.contains("gl-look-dark"), "dark class removed with the skin");
       assert(document.documentElement.getAttribute("data-color-mode") === "auto", "previous github color mode restored");
+      GitLabLook.render(document, { enabled: true, commentOrder: "asc", theme: "dark" });
+      document.documentElement.dataset.colorMode = "light";
+      document.documentElement.classList.remove("gl-look");
+      expectRepin = true;
       } catch (error) {
         failures.push("exception: " + (error && error.stack ? error.stack : error));
       }
 
-      document.documentElement.dataset.result = failures.length ? "fail" : "pass";
-      document.body.innerHTML = '<pre id="out"></pre>';
-      document.getElementById("out").textContent = (failures.length ? "FAIL\n" : "PASS\n") + failures.join("\n");
+      queueMicrotask(function () {
+        if (expectRepin) {
+          assert(document.documentElement.getAttribute("data-color-mode") === "dark", "dataset color mode restored before paint");
+          assert(document.documentElement.classList.contains("gl-look"), "skin class restored before paint");
+          assert(document.documentElement.classList.contains("gl-look-dark"), "dark class restored before paint");
+        }
+        document.documentElement.dataset.result = failures.length ? "fail" : "pass";
+        document.body.innerHTML = '<pre id="out"></pre>';
+        document.getElementById("out").textContent = (failures.length ? "FAIL\n" : "PASS\n") + failures.join("\n");
+      });
     </script>
   </body>
 </html>
